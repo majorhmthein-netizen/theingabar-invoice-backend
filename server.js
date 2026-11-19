@@ -69,12 +69,24 @@ function validateInvoice(body) {
   if (body.uid !== undefined && (typeof body.uid !== "string" || body.uid.length > 128)) {
     return "uid must be a short string";
   }
+  if (body.no !== undefined && body.no !== null && (typeof body.no !== "string" || !/^\d{8}-\d{3}$/.test(body.no))) {
+    return "no must look like YYYYMMDD-NNN";
+  }
+  if (body.userId !== undefined && body.userId !== null && (typeof body.userId !== "string" || body.userId.length > 128)) {
+    return "userId must be a short string";
+  }
+  if (body.createdAt !== undefined && body.createdAt !== null && (!Number.isInteger(body.createdAt) || body.createdAt < 0)) {
+    return "createdAt must be a non-negative integer (ms)";
+  }
   return null;
 }
 
 function cleanInvoice(body) {
   return {
     uid: typeof body.uid === "string" && body.uid ? body.uid : crypto.randomUUID(),
+    no: typeof body.no === "string" && body.no ? body.no : null,
+    userId: typeof body.userId === "string" && body.userId ? body.userId : null,
+    createdAt: Number.isInteger(body.createdAt) && body.createdAt >= 0 ? body.createdAt : null,
     date: body.date.trim(),
     customer: body.customer.trim(),
     items: body.items.map((it) => ({ desc: it.desc, amount: it.amount })),
@@ -103,6 +115,9 @@ async function initPostgres() {
       `CREATE TABLE IF NOT EXISTS invoices (
         id SERIAL PRIMARY KEY,
         uid TEXT UNIQUE NOT NULL,
+        no TEXT,
+        user_id TEXT,
+        client_created_at BIGINT,
         date TEXT NOT NULL,
         customer TEXT NOT NULL,
         items JSONB NOT NULL,
@@ -110,6 +125,16 @@ async function initPostgres() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`
+    );
+    // Migrate a DB created before the no/userId/createdAt columns existed
+    // (the live Render DB was created at first deploy without them).
+    await pool.query("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS no TEXT");
+    await pool.query("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id TEXT");
+    await pool.query("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS client_created_at BIGINT");
+    // Invoice numbers are global + sequential: two invoices must never
+    // share one. The client retries once with a fresh number on 409.
+    await pool.query(
+      "CREATE UNIQUE INDEX IF NOT EXISTS invoices_no_unique ON invoices(no) WHERE no IS NOT NULL"
     );
     storeName = "postgres";
     console.log("[backend] store: postgres (table invoices ready)");
@@ -126,6 +151,14 @@ function rowToInvoice(r) {
   return {
     id: r.id,
     uid: r.uid,
+    no: r.no || null,
+    userId: r.user_id || r.userId || null,
+    createdAt:
+      r.client_created_at == null
+        ? r.createdAt == null
+          ? null
+          : Number(r.createdAt)
+        : Number(r.client_created_at),
     date: r.date,
     customer: r.customer,
     items: r.items,
@@ -158,7 +191,7 @@ function jsonWrite(doc) {
 async function listInvoices() {
   if (pool) {
     const res = await pool.query(
-      "SELECT id, uid, date, customer, items, total, created_at, updated_at FROM invoices ORDER BY created_at DESC, id DESC"
+      "SELECT id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at FROM invoices ORDER BY created_at DESC, id DESC"
     );
     return res.rows.map(rowToInvoice);
   }
@@ -173,16 +206,23 @@ async function createInvoice(inv) {
   if (pool) {
     try {
       const res = await pool.query(
-        "INSERT INTO invoices (uid, date, customer, items, total) VALUES ($1,$2,$3,$4,$5) " +
-          "RETURNING id, uid, date, customer, items, total, created_at, updated_at",
-        [inv.uid, inv.date, inv.customer, JSON.stringify(inv.items), inv.total]
+        "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) " +
+          "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at",
+        [inv.uid, inv.no, inv.userId, inv.createdAt, inv.date, inv.customer, JSON.stringify(inv.items), inv.total]
       );
       return rowToInvoice(res.rows[0]);
     } catch (e) {
       if (e.code === "23505") {
+        if (e.constraint === "invoices_no_unique") {
+          // Another phone already used this invoice number: the client
+          // re-numbers once and retries (see syncSaveToServer).
+          const dup = new Error("invoice number already exists");
+          dup.code = "DUPLICATE_NO";
+          throw dup;
+        }
         // uid already exists (e.g. re-seed after a retry): return the existing row
         const res = await pool.query(
-          "SELECT id, uid, date, customer, items, total, created_at, updated_at FROM invoices WHERE uid = $1",
+          "SELECT id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at FROM invoices WHERE uid = $1",
           [inv.uid]
         );
         if (res.rows.length) return rowToInvoice(res.rows[0]);
@@ -193,8 +233,28 @@ async function createInvoice(inv) {
   const doc = jsonRead();
   const existing = doc.invoices.find((r) => r.uid === inv.uid);
   if (existing) return rowToInvoice(existing);
+  if (inv.no) {
+    const dupNo = doc.invoices.find((r) => r.no === inv.no);
+    if (dupNo) {
+      const err = new Error("invoice number already exists");
+      err.code = "DUPLICATE_NO";
+      throw err;
+    }
+  }
   const now = new Date().toISOString();
-  const row = { id: doc.nextId++, ...inv, created_at: now, updated_at: now };
+  const row = {
+    id: doc.nextId++,
+    uid: inv.uid,
+    no: inv.no,
+    user_id: inv.userId,
+    client_created_at: inv.createdAt,
+    date: inv.date,
+    customer: inv.customer,
+    items: inv.items,
+    total: inv.total,
+    created_at: now,
+    updated_at: now,
+  };
   doc.invoices.push(row);
   jsonWrite(doc);
   return rowToInvoice(row);
@@ -202,16 +262,37 @@ async function createInvoice(inv) {
 
 async function updateInvoice(id, inv) {
   if (pool) {
-    const res = await pool.query(
-      "UPDATE invoices SET date=$2, customer=$3, items=$4, total=$5, updated_at=now() WHERE id=$1 " +
-        "RETURNING id, uid, date, customer, items, total, created_at, updated_at",
-      [id, inv.date, inv.customer, JSON.stringify(inv.items), inv.total]
-    );
-    return res.rows.length ? rowToInvoice(res.rows[0]) : null;
+    try {
+      const res = await pool.query(
+        "UPDATE invoices SET no=COALESCE($2, no), user_id=COALESCE($3, user_id), " +
+          "client_created_at=COALESCE($4, client_created_at), date=$5, customer=$6, items=$7, total=$8, updated_at=now() WHERE id=$1 " +
+          "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at",
+        [id, inv.no, inv.userId, inv.createdAt, inv.date, inv.customer, JSON.stringify(inv.items), inv.total]
+      );
+      return res.rows.length ? rowToInvoice(res.rows[0]) : null;
+    } catch (e) {
+      if (e.code === "23505" && e.constraint === "invoices_no_unique") {
+        const dup = new Error("invoice number already exists");
+        dup.code = "DUPLICATE_NO";
+        throw dup;
+      }
+      throw e;
+    }
   }
   const doc = jsonRead();
   const row = doc.invoices.find((r) => r.id === id);
   if (!row) return null;
+  if (inv.no) {
+    const dupNo = doc.invoices.find((r) => r.id !== id && r.no === inv.no);
+    if (dupNo) {
+      const err = new Error("invoice number already exists");
+      err.code = "DUPLICATE_NO";
+      throw err;
+    }
+    row.no = inv.no;
+  }
+  if (inv.userId != null) row.user_id = inv.userId;
+  if (inv.createdAt != null) row.client_created_at = inv.createdAt;
   row.date = inv.date;
   row.customer = inv.customer;
   row.items = inv.items;
@@ -252,7 +333,7 @@ function csvCell(v) {
 function invoicesToCsv(list) {
   const head = ["Date", "Customer"];
   for (let i = 1; i <= MAX_ITEMS; i++) head.push("Item " + i, "Item " + i + " Amount");
-  head.push("Items Sum", "Invoice Total", "Check");
+  head.push("Items Sum", "Invoice Total", "Check", "No.");
   const lines = [head.join(",")];
   for (const e of list) {
     const row = [fmtDate(e.date), e.customer];
@@ -262,7 +343,7 @@ function invoicesToCsv(list) {
       row.push(it ? it.desc : "", it ? it.amount : "");
       if (it) sum += Number(it.amount) || 0;
     }
-    row.push(sum, e.total, sum === e.total ? "OK" : "CHECK");
+    row.push(sum, e.total, sum === e.total ? "OK" : "CHECK", e.no || "");
     lines.push(row.map(csvCell).join(","));
   }
   return "\ufeff" + lines.join("\r\n") + "\r\n";
@@ -350,7 +431,17 @@ const server = http.createServer(async (req, res) => {
           sendJson(res, 400, { error: err });
           return;
         }
-        sendJson(res, 201, await createInvoice(cleanInvoice(body)));
+        let created;
+        try {
+          created = await createInvoice(cleanInvoice(body));
+        } catch (e) {
+          if (e && e.code === "DUPLICATE_NO") {
+            sendJson(res, 409, { error: "invoice number already exists" });
+            return;
+          }
+          throw e;
+        }
+        sendJson(res, 201, created);
         return;
       }
       const m = pathname.match(/^\/api\/invoices\/(\d+)$/);
@@ -369,7 +460,16 @@ const server = http.createServer(async (req, res) => {
             sendJson(res, 400, { error: err });
             return;
           }
-          const updated = await updateInvoice(id, cleanInvoice(body));
+          let updated;
+          try {
+            updated = await updateInvoice(id, cleanInvoice(body));
+          } catch (e) {
+            if (e && e.code === "DUPLICATE_NO") {
+              sendJson(res, 409, { error: "invoice number already exists" });
+              return;
+            }
+            throw e;
+          }
           if (!updated) {
             sendJson(res, 404, { error: "invoice not found" });
             return;
