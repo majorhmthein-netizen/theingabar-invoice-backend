@@ -18,8 +18,7 @@ databases:
     plan: free
     databaseName: theingabar_invoice
     user: theingabar_invoice
-    postgresVersion: "16"
-
+    
 services:
   - type: web
     name: theingabar-invoice-web
