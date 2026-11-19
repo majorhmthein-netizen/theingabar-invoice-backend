@@ -1,5 +1,5 @@
 /* Theingabar Invoice — service worker. index.html is self-contained (fonts, libraries and QR are inlined), so caching these files makes the app work offline. */
-const CACHE = 'theingabar-v3';
+const CACHE = 'theingabar-v6';
 const ASSETS = [
   './',
   'index.html',
