@@ -1,0 +1,39 @@
+# Theingabar Invoice — Render Blueprint (Web Service + PostgreSQL).
+# Deploy via: Render Dashboard -> New -> Blueprint -> connect the GitHub repo
+# containing this file. Render creates BOTH resources below in one go.
+#
+# What you get:
+#   - Web Service  "theingabar-invoice-web"  (Node, serves the PWA + /api)
+#   - PostgreSQL   "theingabar-invoice-db"   (free plan, Postgres 16)
+# The web service gets DATABASE_URL from the database automatically, and a
+# random INVOICE_API_KEY is generated — copy it into the app's "Server key"
+# prompt on first open (see README.md).
+#
+# NOTE: the live Static Site "theingabar-invoice" is a SEPARATE service and
+# is not touched by this Blueprint. After this deploys, the Web Service URL
+# (https://theingabar-invoice-web.onrender.com) becomes the app URL.
+
+databases:
+  - name: theingabar-invoice-db
+    plan: free
+    databaseName: theingabar_invoice
+    user: theingabar_invoice
+    postgresVersion: "16"
+
+services:
+  - type: web
+    name: theingabar-invoice-web
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: theingabar-invoice-db
+          property: connectionString
+      - key: INVOICE_API_KEY
+        generateValue: true
+      - key: NODE_ENV
+        value: production

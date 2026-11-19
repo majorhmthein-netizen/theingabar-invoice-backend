@@ -1,0 +1,6 @@
+# node_modules — installed by `npm install` on Render / locally
+node_modules/
+# Local JSON fallback store (created when no DATABASE_URL is set)
+data/
+# Local secrets — never commit
+.env
