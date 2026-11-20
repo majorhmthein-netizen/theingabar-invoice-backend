@@ -88,12 +88,12 @@ public static class Auth
 
     /* ---------------- rate limiting ---------------- */
 
-    /// <summary>OTP requests: 3 per 10 min per phone+IP, plus 10 per hour
+    /// <summary>OTP requests: 5 per 10 min per phone+IP, plus 10 per hour
     /// per IP. Lockouts escalate: 1st 1 min, 2nd 5 min, 3rd+ 10 min
     /// (see Db.CheckOtpThrottleAsync). Returns (allowed, retryAfterSeconds).</summary>
     public static async Task<(bool Allowed, int RetryAfter)> CheckOtpRequestLimitAsync(string phone, string ip)
     {
-        var r = await AppDb.CheckOtpThrottleAsync("otp-req:" + phone + ":" + ip, 3, 600);
+        var r = await AppDb.CheckOtpThrottleAsync("otp-req:" + phone + ":" + ip, 5, 600);
         if (!r.Allowed) return r;
         return await AppDb.CheckOtpThrottleAsync("otp-req-ip:" + ip, 10, 3600);
     }

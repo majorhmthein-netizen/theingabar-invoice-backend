@@ -32,7 +32,7 @@ public static class SmsPoh
     public const int TtlSeconds = 300;     // 5 minutes
     const int MaxInvalidAttempts = 5;
 
-    static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(20) };
+    static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(45) };
 
     public static bool Configured =>
         !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SMSPOH_API_KEY")) &&
