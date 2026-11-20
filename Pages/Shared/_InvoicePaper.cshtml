@@ -1,24 +1,41 @@
-@* Frozen invoice paper — HTML structure and classes are exactly the PWA's
-   (extract/invoice-paper.md, source lines 505–540). Do not change the
-   layout: the printed invoice format stays exactly as approved.
-   Model: InvoicePaperModel. Razor auto-encodes all values (same effect
-   as the PWA's esc()/textContent). *@
+@* Invoice paper — the APPROVED Safari template layout (Han 2026-11-21):
+   two-column letterhead (U Moe title left, INVOICE + date + no. right),
+   boxed customer panel, navy items-table header, boxed payment panel,
+   two signature lines, thanks + group line. Two Han-ordered changes vs
+   the template: title stays U Moe (not the template's serif) and both
+   "Theingabar Automotive Group" lines are gold. Do not change the layout
+   otherwise: the printed invoice format stays exactly as approved.
+   Model: InvoicePaperModel. Razor auto-encodes all values. *@
 @model InvoicePaperModel
 <div class="invoice" id="invoice">
-  <div class="inv-head">
-    <div class="inv-shop" id="pShop">@Model.Meta.Shop</div>
-    <div class="inv-word">INVOICE</div>
-    <div class="inv-group" id="pGroup">@Model.Meta.Group</div>
+  <div class="inv-letterhead">
+    <div class="inv-brand">
+      <div class="inv-brand-left">
+        <div class="inv-shop" id="pShop">@Model.Meta.Shop</div>
+        <div class="inv-group" id="pGroup">@Model.Meta.Group</div>
+      </div>
+      <div class="inv-brand-right">
+        <div class="inv-word">INVOICE</div>
+        <div class="inv-date"><span class="lbl">Date:</span> @Paper.FmtDateLong(Model.Date)</div>
+        <div class="inv-no"><span class="lbl">No.</span> @Model.No</div>
+      </div>
+    </div>
     <div class="inv-services" id="pServices">@Model.Meta.Services</div>
     <div class="inv-addr">
-      <b>Address –</b> <span id="pAddress">@Model.Meta.Address</span><br />
-      <b>Contact –</b> <span id="pPhones">@Model.Meta.PhonesDisplay</span>
+      <span><b>Address:</b> <span id="pAddress">@Model.Meta.Address</span></span>
+      <span><b>Contact:</b> <span id="pPhones">@Model.Meta.PhonesDisplay</span></span>
     </div>
   </div>
-  <div class="inv-meta">
-    <div><span class="k">Customer Info</span><span class="v" id="pCustomer">@(string.IsNullOrWhiteSpace(Model.Customer) ? "—" : Model.Customer)</span></div>
-    <div style="text-align:right"><span class="k">Date</span><span class="v" id="pDate">@Paper.FmtDate(Model.Date)</span></div>
-    <div style="text-align:right"><span class="k">No.</span><span class="v" id="pNo">@Model.No</span></div>
+  <div class="inv-custbox">
+    <div class="inv-cust">
+      <span class="k">Customer / Vehicle</span>
+      <span class="v" id="pCustomer">@(string.IsNullOrWhiteSpace(Model.Customer) ? "—" : Model.Customer)</span>
+    </div>
+    <div class="inv-custdate">
+      <span class="k">Date</span>
+      <span class="v" id="pDate">@Paper.FmtDate(Model.Date)</span>
+      <span class="inv-curr">Currency: MMK</span>
+    </div>
   </div>
   <table class="inv-table">
     <thead>
@@ -35,14 +52,20 @@
       <tr class="inv-total"><td></td><td>Total (MMK)</td><td class="amt" id="pTotal">@Paper.Fmt(Model.Total)</td></tr>
     </tbody>
   </table>
-  <div class="inv-pay">
-    <div>
+  <div class="inv-paybox">
+    <div class="inv-paytext">
       <div class="p-k">Payment</div>
-      <div class="p-name">KBZ Pay</div>
-      <div class="p-num">No. <span id="pPayNum">@Model.PayNum</span></div>
-      <div>Name. <span id="pPayName" style="font-weight:700">@Model.PayName</span></div>
+      <div class="p-line"><b class="p-name">KBZ Pay</b> — No. <b class="p-num" id="pPayNum">@Model.PayNum</b> — Name: <b class="p-payname" id="pPayName">@Model.PayName</b></div>
+      <div class="p-scan">Scan the QR code with KBZPay to pay.</div>
     </div>
-    <img id="pQr" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" crossorigin="anonymous" />
+    <img id="pQr" class="p-qr" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" crossorigin="anonymous" />
   </div>
-  <div class="inv-thanks"><span class="en" id="pThanks">@Model.Meta.Thanks</span></div>
+  <div class="inv-sign">
+    <div class="sign-box"><div class="line"></div><div class="cap">Customer Signature</div></div>
+    <div class="sign-box"><div class="line"></div><div class="cap">Authorized Signature</div></div>
+  </div>
+  <div class="inv-thanks">
+    <span class="en" id="pThanks">@Model.Meta.Thanks</span>
+    <span class="inv-thanks-group">@Paper.TitleCase(Model.Meta.Group)</span>
+  </div>
 </div>
