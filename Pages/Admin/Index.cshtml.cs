@@ -77,12 +77,4 @@ public class AdminIndexModel : AppPageModel
         return RedirectToPage("/Admin/Index");
     }
 
-    public async Task<IActionResult> OnPostRevokeSessionsAsync()
-    {
-        var gate = await RequireAdminAsync();
-        if (gate is not null) return gate;
-        await AppDb.RevokeUserSessionsAsync(UserId);
-        Flash("Sessions revoked — the user must log in again.");
-        return RedirectToPage("/Admin/Index");
-    }
 }

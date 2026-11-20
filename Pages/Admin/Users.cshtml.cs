@@ -53,14 +53,6 @@ public class AdminUsersModel : AppPageModel
         return RedirectToPage("/Admin/Users");
     }
 
-    public async Task<IActionResult> OnPostRevokeSessionsAsync()
-    {
-        var g = await GateAsync(); if (g is not null) return g;
-        await AppDb.RevokeUserSessionsAsync(UserId);
-        Flash("Sessions revoked.");
-        return RedirectToPage("/Admin/Users");
-    }
-
     public async Task<IActionResult> OnPostResetRateLimitAsync()
     {
         var g = await GateAsync(); if (g is not null) return g;
