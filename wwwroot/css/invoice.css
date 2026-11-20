@@ -1,57 +1,90 @@
-      /* ---------- invoice paper (always light: it is the printed document) ---------- */
+      /* ---------- invoice paper (always light: it is the printed document) ----------
+         Approved Safari template layout (Han 2026-11-21): two-column
+         letterhead, boxed customer panel, navy items-table header, boxed
+         payment panel, two signature lines, thanks + group line.
+         Title U Moe + both group lines gold (Han-ordered, vs the template's
+         serif title and grey group line). Description Light 300 black and
+         amounts Bold 700 black per Han 2026-11-21. */
       .preview-scroll{overflow:visible}
       .invoice{
-        background:#ffffff;color:#14202e;border-radius:10px;
-        padding:30px 32px 26px;max-width:680px;margin:0 auto;
+        background:#ffffff;color:#14202e;border-radius:6px;
+        padding:30px 34px 26px;max-width:720px;margin:0 auto;
         font-family:"Noto Sans Myanmar","Archivo",sans-serif;
         box-shadow:0 2px 14px rgba(10,25,45,.18);
       }
-      .inv-head{text-align:center;border-bottom:3px double #0b5394;padding-bottom:14px}
+      .inv-letterhead{border-top:3px solid #14202e;padding-top:16px}
+      .inv-brand{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
       .inv-shop{
         font-family:"U Moe","Noto Serif Myanmar","Noto Sans Myanmar",serif;font-weight:900;
-        font-size:44px;line-height:1.25;color:#0b5394;letter-spacing:.01em;
+        font-size:44px;line-height:1.2;color:#0b5394;letter-spacing:.01em;
       }
+      .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.18em;font-size:12.5px;color:#D4AF37;margin-top:6px}
+      .inv-brand-right{text-align:right}
       .inv-word{
-        font-family:"Archivo",sans-serif;font-weight:800;letter-spacing:.55em;
-        font-size:19px;color:#0b5394;margin-top:2px;text-indent:.55em;
+        font-family:"Archivo",sans-serif;font-weight:800;letter-spacing:.22em;
+        font-size:28px;color:#14202e;white-space:nowrap;
       }
-      .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.28em;font-size:10.5px;color:#D4AF37;margin-top:5px;text-indent:.28em}
-      .inv-services{font-weight:700;font-size:13.5px;line-height:1.75;margin-top:10px;color:#24344a}
-      .inv-addr{font-weight:600;font-size:13px;margin-top:6px;color:#24344a;line-height:1.7}
-      .inv-addr b{font-weight:800}
-      .inv-meta{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:16px 0 4px;font-size:14.5px}
-      .inv-meta .k{color:#5b6a7a;font-size:12px;font-family:"Archivo",sans-serif;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
-      .inv-meta .v{font-weight:700}
-      table.inv-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14.5px}
+      .inv-word::after{content:"";display:block;height:4px;background:#D4AF37;margin-top:6px}
+      .inv-date,.inv-no{font-weight:600;font-size:14px;color:#24344a;margin-top:5px}
+      .inv-date .lbl,.inv-no .lbl{color:#5b6a7a;font-weight:600}
+      .inv-services{font-weight:700;font-size:14px;line-height:1.9;margin-top:14px;color:#14202e}
+      .inv-addr{
+        display:flex;justify-content:space-between;gap:8px 28px;flex-wrap:wrap;
+        border-top:1px solid #dfe5ec;margin-top:12px;padding-top:10px;
+        font-weight:600;font-size:14px;line-height:1.7;color:#14202e;
+      }
+      .inv-addr b{font-weight:800;color:#0b5394}
+      .inv-addr #pPhones{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+      .inv-custbox{
+        display:flex;justify-content:space-between;gap:14px 22px;flex-wrap:wrap;
+        border:1px solid #dfe5ec;border-radius:6px;padding:16px 18px;margin-top:18px;
+      }
+      .inv-custbox .k{color:#5b6a7a;font-size:11px;font-family:"Archivo",sans-serif;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:4px;font-weight:700}
+      .inv-custbox .v{font-weight:700;font-size:19px;line-height:1.5}
+      .inv-custdate{text-align:right}
+      .inv-custdate .v{font-variant-numeric:tabular-nums}
+      .inv-curr{display:block;font-size:14px;color:#5b6a7a;margin-top:4px}
+      table.inv-table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14.5px}
       table.inv-table th{
-        text-align:left;border-top:2px solid #14202e;border-bottom:1.5px solid #14202e;
-        padding:8px 6px;font-family:"Archivo",sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+        text-align:left;background:#14202e;color:#ffffff;
+        padding:10px;font-family:"Archivo",sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
       }
       table.inv-table th.amt,table.inv-table td.amt{text-align:right}
-      table.inv-table td{padding:8px 6px;border-bottom:1px solid #dfe5ec;vertical-align:top;line-height:1.55}
+      table.inv-table td{padding:10px;border-bottom:1px solid #dfe5ec;vertical-align:top;line-height:1.55}
       table.inv-table td.amt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700;color:#000000}
       table.inv-table td.desc{font-weight:300;color:#000000}
       table.inv-table td.no{color:#7b8a99;width:30px}
       tr.inv-total td{
-        border-bottom:none;border-top:2px solid #14202e;padding:11px 6px 4px;
+        border-bottom:none;border-top:2px solid #14202e;padding:12px 10px 4px;
         font-weight:800;font-size:16.5px;
       }
       tr.inv-total td.amt{color:#0b5394}
-      .inv-pay{
-        display:flex;gap:18px;align-items:center;justify-content:space-between;
-        border-top:1px solid #dfe5ec;margin-top:16px;padding-top:14px;flex-wrap:wrap;
+      .inv-paybox{
+        display:flex;gap:20px;align-items:center;justify-content:space-between;
+        border:1px solid #dfe5ec;border-radius:6px;margin-top:18px;padding:16px 18px;flex-wrap:wrap;
       }
-      .inv-pay .p-k{font-family:"Archivo",sans-serif;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b6a7a;margin-bottom:4px}
-      .inv-pay .p-name{font-weight:800;font-size:16px}
-      .inv-pay .p-num{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
-      .inv-pay img{width:118px;height:118px;display:block}
-      .inv-thanks{text-align:center;margin-top:16px;font-size:13.5px;color:#40536a;font-weight:600}
-      .inv-thanks .en{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.02em}
+      .inv-paybox .p-k{font-family:"Archivo",sans-serif;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b6a7a;margin-bottom:6px;font-weight:700}
+      .inv-paybox .p-line{font-size:15px;line-height:1.65;color:#14202e}
+      .inv-paybox .p-name{font-weight:800;color:#0b5394}
+      .inv-paybox .p-num{font-weight:700;color:#0b5394;font-variant-numeric:tabular-nums}
+      .inv-paybox .p-payname{font-weight:700;color:#0b5394}
+      .inv-paybox .p-scan{font-size:14px;color:#5b6a7a;margin-top:4px}
+      .inv-paybox img.p-qr{width:130px;height:130px;padding:6px;box-sizing:border-box;border:1px solid #dfe5ec;border-radius:6px;background:#fff;display:block;flex:none}
+      .inv-sign{display:flex;justify-content:space-between;gap:24px;margin-top:34px}
+      .sign-box{width:280px;max-width:45%;text-align:center}
+      .sign-box .line{border-bottom:1px solid #14202e;height:44px}
+      .sign-box .cap{margin-top:7px;font-size:13px;color:#5b6a7a;letter-spacing:.04em}
+      .inv-thanks{text-align:center;margin-top:30px;border-top:1px solid #dfe5ec;padding-top:16px}
+      .inv-thanks .en{display:block;font-family:"Archivo",sans-serif;font-weight:700;font-size:15px;color:#0b5394;letter-spacing:.02em}
+      .inv-thanks-group{display:block;margin-top:4px;font-size:14px;color:#5b6a7a;font-weight:600}
       @media (max-width:560px){
         .invoice{padding:22px 18px 20px}
         .inv-shop{font-size:34px}
-        .inv-word{font-size:16px}
-        .inv-pay img{width:104px;height:104px}
+        .inv-word{font-size:22px}
+        .inv-custdate{text-align:left}
+        .inv-paybox img.p-qr{width:112px;height:112px}
+        .inv-sign{flex-direction:column}
+        .sign-box{width:100%;max-width:280px}
       }
       @media print{
         body{background:#fff}
