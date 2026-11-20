@@ -28,7 +28,7 @@
     @for (var i = 0; i < Model.Items.Count; i++)
     {
       var it = Model.Items[i];
-      <tr><td class="no">@(i + 1)</td><td>@(string.IsNullOrWhiteSpace(it.Desc) ? "—" : it.Desc)</td><td class="amt">@Paper.Fmt(it.Amount)</td></tr>
+      <tr><td class="no">@(i + 1)</td><td class="desc">@(string.IsNullOrWhiteSpace(it.Desc) ? "—" : it.Desc)</td><td class="amt">@Paper.Fmt(it.Amount)</td></tr>
     }
     </tbody>
     <tbody>
