@@ -50,7 +50,7 @@ public abstract class AppPageModel : PageModel
         if (r is not null) return r;
         if (!Me!.CanWrite)
         {
-            TempData["FlashError"] = "Waiting for Admin approval — read-only until approved.";
+            TempData["FlashError"] = "pending";
             return RedirectToPage("/User");
         }
         return null;

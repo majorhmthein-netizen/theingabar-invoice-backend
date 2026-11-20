@@ -88,20 +88,28 @@ public static class Auth
 
     /* ---------------- rate limiting ---------------- */
 
-    /// <summary>OTP requests: 3 per 10 min per phone+IP (each request costs
-    /// one SMS), plus 10 per hour per IP. Returns (allowed, retryAfterSeconds).</summary>
+    /// <summary>OTP requests: 3 per 10 min per phone+IP, plus 10 per hour
+    /// per IP. Lockouts escalate: 1st 1 min, 2nd 5 min, 3rd+ 10 min
+    /// (see Db.CheckOtpThrottleAsync). Returns (allowed, retryAfterSeconds).</summary>
     public static async Task<(bool Allowed, int RetryAfter)> CheckOtpRequestLimitAsync(string phone, string ip)
     {
-        var (okPhone, retryPhone) = await AppDb.CheckRateLimitAsync(
-            "otp-req:" + phone + ":" + ip, 3, 600, 600);
-        if (!okPhone) return (false, retryPhone);
-        return await AppDb.CheckRateLimitAsync("otp-req-ip:" + ip, 10, 3600, 3600);
+        var r = await AppDb.CheckOtpThrottleAsync("otp-req:" + phone + ":" + ip, 3, 600);
+        if (!r.Allowed) return r;
+        return await AppDb.CheckOtpThrottleAsync("otp-req-ip:" + ip, 10, 3600);
     }
 
     public static async Task RecordOtpRequestAsync(string phone, string ip)
     {
         await AppDb.RecordAttemptAsync("otp-req:" + phone + ":" + ip, 600);
         await AppDb.RecordAttemptAsync("otp-req-ip:" + ip, 3600);
+    }
+
+    /// <summary>A successful OTP send forgives past lockouts: the next
+    /// lockout starts again at 1 minute.</summary>
+    public static async Task ResetOtpLockCountAsync(string phone, string ip)
+    {
+        await AppDb.ResetRateLimitAsync("otp-req:" + phone + ":" + ip + ":locks");
+        await AppDb.ResetRateLimitAsync("otp-req-ip:" + ip + ":locks");
     }
 
     /// <summary>Admin Google sign-in failures: 3 failures → 5-min lockout.</summary>

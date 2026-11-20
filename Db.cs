@@ -543,6 +543,70 @@ public static class AppDb
         await cmd.ExecuteNonQueryAsync();
     }
 
+    /* OTP throttle with an escalating lockout (Han 2026-11-21): the first
+     * lockout is 1 minute, the second 5 minutes, the third and later
+     * 10 minutes — never longer. The lock count lives in a companion
+     * key ("{key}:locks"); a successful OTP send resets it, so normal
+     * use always starts again at 1 minute. Returns (allowed,
+     * retryAfterSeconds). */
+
+    static async Task<int> GetAttemptsAsync(NpgsqlConnection conn, string key)
+    {
+        await using var cmd = new NpgsqlCommand(
+            "SELECT attempts FROM rate_limits WHERE key = @k", conn);
+        cmd.Parameters.AddWithValue("@k", key);
+        var v = await cmd.ExecuteScalarAsync();
+        return v is null ? 0 : (int)v;
+    }
+
+    static async Task BumpLockCountAsync(NpgsqlConnection conn, string key)
+    {
+        await using var cmd = new NpgsqlCommand(
+            "INSERT INTO rate_limits (key, attempts, window_start) VALUES (@k, 1, now()) " +
+            "ON CONFLICT (key) DO UPDATE SET attempts = rate_limits.attempts + 1", conn);
+        cmd.Parameters.AddWithValue("@k", key);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public static async Task<(bool Allowed, int RetryAfter)> CheckOtpThrottleAsync(
+        string key, int maxAttempts, int windowSeconds)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        int? attempts = null;
+        DateTime? windowStart = null, lockedUntil = null;
+        await using (var cmd = new NpgsqlCommand(
+            "SELECT attempts, window_start, locked_until FROM rate_limits WHERE key = @k", conn))
+        {
+            cmd.Parameters.AddWithValue("@k", key);
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync())
+            {
+                attempts = r.GetInt32(0);
+                windowStart = r.GetDateTime(1);
+                lockedUntil = r.IsDBNull(2) ? (DateTime?)null : r.GetDateTime(2);
+            }
+        }
+        var now = DateTime.UtcNow;
+        if (lockedUntil is not null && lockedUntil.Value > now)
+            return (false, (int)Math.Ceiling((lockedUntil.Value - now).TotalSeconds));
+        if (attempts is not null && windowStart is not null &&
+            (now - windowStart.Value).TotalSeconds <= windowSeconds &&
+            attempts.Value >= maxAttempts)
+        {
+            var locks = await GetAttemptsAsync(conn, key + ":locks");
+            var duration = locks <= 0 ? 60 : locks == 1 ? 300 : 600;
+            var lockUntil = now.AddSeconds(duration);
+            await using var up = new NpgsqlCommand(
+                "UPDATE rate_limits SET locked_until = @l WHERE key = @k", conn);
+            up.Parameters.AddWithValue("@l", lockUntil);
+            up.Parameters.AddWithValue("@k", key);
+            await up.ExecuteNonQueryAsync();
+            await BumpLockCountAsync(conn, key + ":locks");
+            return (false, duration);
+        }
+        return (true, 0);
+    }
+
     /// <summary>Deletes all rate-limit keys with the given prefix
     /// (admin reset: all per-IP counters for one account).</summary>
     public static async Task ResetRateLimitsByPrefixAsync(string prefix)
