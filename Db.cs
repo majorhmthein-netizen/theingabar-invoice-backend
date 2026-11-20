@@ -95,6 +95,13 @@ public static class AppDb
         await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone3 TEXT");
         await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone4 TEXT");
         await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone5 TEXT");
+        // Template thanks (Han 2026-11-21): the approved template's closing
+        // line is "Thank you for choosing our service." — update the stored
+        // value only when it still equals the old default (i.e. never
+        // customised in Admin/Meta); a custom closing line is left alone.
+        await ExecAsync(conn,
+            "UPDATE meta SET thanks = 'Thank you for choosing our service.' " +
+            "WHERE id = 1 AND thanks = 'Thank you for choosing Theingabar Automotive Group.'");
         await ExecAsync(conn, """
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
@@ -166,7 +173,7 @@ public static class AppDb
             cmd.Parameters.AddWithValue("@payNum", "09428332233");
             cmd.Parameters.AddWithValue("@qr", (object?)seedQr ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@qrType", seedQr is null ? (object)DBNull.Value : "image/jpeg");
-            cmd.Parameters.AddWithValue("@thanks", "Thank you for choosing Theingabar Automotive Group.");
+            cmd.Parameters.AddWithValue("@thanks", "Thank you for choosing our service.");
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -408,7 +415,7 @@ public static class AppDb
         "ကားကြီး၊ ကားလတ်၊ မော်ဒယ်မြင့် အိမ်စီးကား အမျိုးမျိုး - အင်ဂျင်၊ AT/MT ဂီယာဘောက်၊ ဝါယာရိန်း, Air-Con, ဘရိတ်၊ အောက်ပိုင်း ပြုပြင်ရေးနှင့် OBD Diagnosis",
         "ပင်မှီလမ်း၊ ဇောတိ၊ အောင်ပန်းမြို့",
         "09428188129", "09428332233", null, null, null, "Han Min Thein", "09428332233",
-        "Thank you for choosing Theingabar Automotive Group.", false);
+        "Thank you for choosing our service.", false);
 
     public static async Task<MetaRow> GetMetaAsync()
     {

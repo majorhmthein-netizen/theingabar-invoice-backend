@@ -83,6 +83,23 @@ public static class Paper
         return p.Length == 3 ? p[2] + ". " + p[1] + ". " + p[0] : iso;
     }
 
+    /// <summary>Long header date as on the approved template:
+    /// "19 November 2026" (day + full English month + year).</summary>
+    public static string FmtDateLong(string? iso)
+    {
+        if (string.IsNullOrEmpty(iso)) return "";
+        if (DateOnly.TryParse(iso, out var d)) return d.ToString("d MMMM yyyy", EnUs);
+        return iso;
+    }
+
+    /// <summary>Title case for the thanks-line group name:
+    /// "THEINGABAR AUTOMOTIVE GROUP" → "Theingabar Automotive Group".</summary>
+    public static string TitleCase(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        return EnUs.TextInfo.ToTitleCase(s.ToLowerInvariant());
+    }
+
     /// <summary>Payment name/number + QR source for an invoice, with the
     /// PWA's precedence: the invoice owner's KBZ template, else shop meta,
     /// else the embedded seed QR file.</summary>
