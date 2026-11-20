@@ -16,7 +16,7 @@ public class IndexModel : AppPageModel
     {
         if (NeedDb(out var redirect)) return redirect!;
         await LoadCommonAsync();
-        Users = await AppDb.ListUsersAsync();
+        Users = await AppDb.ListApprovedUsersAsync();
         var all = await _store.ListAsync();
         Recent = all.Take(10).ToList();
         var (wf, wt) = AppDb.ThisWeek();

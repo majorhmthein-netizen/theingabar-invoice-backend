@@ -16,9 +16,8 @@
   }
   @foreach (var u in Model.Users)
   {
-    <a class="user-chip" href="/log?user=@u.LocalId"><span class="avatar">@Paper_Initials(u.Username)</span>@u.Username</a>
+    <span class="user-chip"><span class="avatar">@Paper_Initials(u.Username)</span>@u.Username</span>
   }
-  <p class="hint">Tap a mechanic to view their invoice log (read-only).</p>
 </div>
 
 <div class="panel">
@@ -43,7 +42,6 @@
       <a href="/invoice/@inv.Id">View</a>
     </div>
   }
-  <p><a href="/log">Full log</a></p>
 </div>
 
 @functions {

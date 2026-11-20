@@ -50,23 +50,10 @@
 </main>
 
 <nav class="tabbar" aria-label="Pages">
-  <a class="tab-btn" href="/">Home</a>
-  <a class="tab-btn" href="/log">Log</a>
-  @if (me is not null && me.CanWrite)
-  {
-    <a class="tab-btn" href="/form">New invoice</a>
-    <a class="tab-btn" href="/user">User</a>
-  }
-  else if (me is not null)
-  {
-    <a class="tab-btn" href="/user">User</a>
-  }
-  else
-  {
-    <a class="tab-btn" href="/login">Log in</a>
-  }
+  <a class="invoice-fab" href="/form">Invoice</a>
 </nav>
 
 <script src="/js/sw-register.js"></script>
+<script src="/js/nav.js"></script>
 </body>
 </html>

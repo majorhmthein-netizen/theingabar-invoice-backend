@@ -29,6 +29,6 @@ public class InvoiceModel : AppPageModel
         if (row.UserId != Me!.User.LocalId && !Me.IsAdmin) return Forbid();
         await _store.DeleteAsync(id);
         Flash($"Invoice {row.No} deleted.");
-        return RedirectToPage("/Log");
+        return RedirectToPage(Me!.IsAdmin ? "/Admin/Log" : "/Index");
     }
 }
