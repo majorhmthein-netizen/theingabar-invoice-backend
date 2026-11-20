@@ -1,0 +1,70 @@
+      /* ---------- invoice paper (always light: it is the printed document) ---------- */
+      .preview-scroll{overflow:visible}
+      .invoice{
+        background:#ffffff;color:#14202e;border-radius:10px;
+        padding:30px 32px 26px;max-width:680px;margin:0 auto;
+        font-family:"Noto Sans Myanmar","Archivo",sans-serif;
+        box-shadow:0 2px 14px rgba(10,25,45,.18);
+      }
+      .inv-head{text-align:center;border-bottom:3px double #0b5394;padding-bottom:14px}
+      .inv-shop{
+        font-family:"Noto Serif Myanmar","Noto Sans Myanmar",serif;font-weight:900;
+        font-size:44px;line-height:1.25;color:#0b5394;letter-spacing:.01em;
+      }
+      .inv-word{
+        font-family:"Archivo",sans-serif;font-weight:800;letter-spacing:.55em;
+        font-size:19px;color:#14202e;margin-top:2px;text-indent:.55em;
+      }
+      .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.28em;font-size:10.5px;color:#b98a1c;margin-top:5px;text-indent:.28em}
+      .inv-services{font-weight:700;font-size:13.5px;line-height:1.75;margin-top:10px;color:#24344a}
+      .inv-addr{font-weight:600;font-size:13px;margin-top:6px;color:#24344a;line-height:1.7}
+      .inv-addr b{font-weight:800}
+      .inv-meta{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:16px 0 4px;font-size:14.5px}
+      .inv-meta .k{color:#5b6a7a;font-size:12px;font-family:"Archivo",sans-serif;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
+      .inv-meta .v{font-weight:700}
+      table.inv-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14.5px}
+      table.inv-table th{
+        text-align:left;border-top:2px solid #14202e;border-bottom:1.5px solid #14202e;
+        padding:8px 6px;font-family:"Archivo",sans-serif;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
+      }
+      table.inv-table th.amt,table.inv-table td.amt{text-align:right}
+      table.inv-table td{padding:8px 6px;border-bottom:1px solid #dfe5ec;vertical-align:top;line-height:1.55}
+      table.inv-table td.amt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+      table.inv-table td.no{color:#7b8a99;width:30px}
+      tr.inv-total td{
+        border-bottom:none;border-top:2px solid #14202e;padding:11px 6px 4px;
+        font-weight:800;font-size:16.5px;
+      }
+      tr.inv-total td.amt{color:#0b5394}
+      .inv-pay{
+        display:flex;gap:18px;align-items:center;justify-content:space-between;
+        border-top:1px solid #dfe5ec;margin-top:16px;padding-top:14px;flex-wrap:wrap;
+      }
+      .inv-pay .p-k{font-family:"Archivo",sans-serif;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b6a7a;margin-bottom:4px}
+      .inv-pay .p-name{font-weight:800;font-size:16px}
+      .inv-pay .p-num{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+      .inv-pay img{width:118px;height:118px;display:block}
+      .inv-thanks{text-align:center;margin-top:16px;font-size:13.5px;color:#40536a;font-weight:600}
+      .inv-thanks .en{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.02em}
+      @media (max-width:560px){
+        .invoice{padding:22px 18px 20px}
+        .inv-shop{font-size:34px}
+        .inv-word{font-size:16px}
+        .inv-pay img{width:104px;height:104px}
+      }
+      @media print{
+        body{background:#fff}
+        .toolbar,.panel.form-panel,.log-panel,.toast{display:none !important}
+        .wrap{padding:0;max-width:none}
+        .grid{grid-template-columns:1fr}
+        .panel.preview-panel{border:none;box-shadow:none;padding:0;background:#fff}
+        .invoice{box-shadow:none;max-width:none}
+      }
+      @media print{
+        html,body{height:auto; overflow:visible}
+        .wrap{height:auto; display:block; padding:0}
+        .pages{display:block; overflow:visible}
+        .page{display:block !important}
+        .page>.panel{overflow:visible}
+        .tabbar, dialog{display:none !important}
+      }
