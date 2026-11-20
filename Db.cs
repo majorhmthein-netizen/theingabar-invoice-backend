@@ -254,6 +254,21 @@ public static class AppDb
         return list;
     }
 
+    /// <summary>Approved users only, for public lists (Home Mechanics, Log filter).
+    /// Pending/rejected/suspended users never appear there — only on Admin pages.</summary>
+    public static async Task<List<UserRow>> ListApprovedUsersAsync()
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
+            "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
+            "(qr IS NOT NULL) FROM users WHERE status = 'approved' ORDER BY created_at ASC, id ASC", conn);
+        await using var r = await cmd.ExecuteReaderAsync();
+        var list = new List<UserRow>();
+        while (await r.ReadAsync()) list.Add(ReadUser(r));
+        return list;
+    }
+
     public static async Task<int> CountUsersAsync()
     {
         await using var conn = await DataSource!.OpenConnectionAsync();

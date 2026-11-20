@@ -258,8 +258,8 @@ app.MapGet("/api/export.csv", async (HttpRequest req, HttpResponse res) =>
 app.Map("/api/{**rest}", async (HttpResponse res) =>
     await SendJson(res, 404, new { error = "not found" }));
 
-/* --- Session-authenticated CSV export for the HTML-only log --- */
-app.MapGet("/log/export", async (HttpContext ctx) =>
+/* --- Admin-only CSV export for the admin invoice history --- */
+app.MapGet("/admin/log/export", async (HttpContext ctx) =>
 {
     if (!AppDb.Available)
     {
@@ -267,9 +267,9 @@ app.MapGet("/log/export", async (HttpContext ctx) =>
         return;
     }
     var me = await Auth.CurrentUserAsync(ctx);
-    if (me is null) { ctx.Response.Redirect("/login?returnUrl=/log/export"); return; }
+    if (me is null) { ctx.Response.Redirect("/login?returnUrl=/admin/log/export"); return; }
+    if (!me.IsAdmin) { ctx.Response.StatusCode = 403; return; }
     var list = await store.ListAsync();
-    if (!me.IsAdmin) list = list.Where(r => r.UserId == me.User.LocalId).ToList();
     var csv = InvoicesToCsv(list);
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "text/csv; charset=utf-8";
