@@ -299,20 +299,33 @@ public static class AppDb
         r.IsDBNull(11) ? (DateTime?)null : r.GetDateTime(11),
         r.GetDateTime(12), r.GetDateTime(13), r.GetBoolean(14));
 
-    // OTP-only: no password is ever set. password_hash stays NULL (old
-    // hashes are dead data, ignored, never verified).
+    // PIN login (2026-11-21): every new account starts with the default
+    // PIN 1111, stored hashed in password_hash (the column is reused —
+    // old password hashes in it are dead data, never verified).
     public static async Task<int> CreateUserAsync(string username, string phone)
     {
         var localId = "u" + Guid.NewGuid().ToString("N")[..12];
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "INSERT INTO users (local_id, username, phone, password_hash, kbz_name, kbz_number, status) " +
-            "VALUES (@l, @u, @p, NULL, @u, @p2, 'pending') RETURNING id", conn);
+            "VALUES (@l, @u, @p, @h, @u, @p2, 'pending') RETURNING id", conn);
         cmd.Parameters.AddWithValue("@l", localId);
         cmd.Parameters.AddWithValue("@u", username.Trim());
         cmd.Parameters.AddWithValue("@p", phone.Trim());
+        cmd.Parameters.AddWithValue("@h", Auth.HashPin(Auth.DefaultPin));
         cmd.Parameters.AddWithValue("@p2", phone.Trim());
         return (int)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    /// <summary>Stores a new (hashed) PIN for a user.</summary>
+    public static async Task SetUserPinHashAsync(int id, string hash)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE users SET password_hash = @h, updated_at = now() WHERE id = @id", conn);
+        cmd.Parameters.AddWithValue("@h", hash);
+        cmd.Parameters.AddWithValue("@id", id);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     public static async Task SetUserStatusAsync(int id, string status, string? approvedBy)
@@ -483,6 +496,18 @@ public static class AppDb
         await cmd.ExecuteNonQueryAsync();
     }
 
+    /// <summary>Revokes all of a user's sessions except one (e.g. after a
+    /// PIN change: other devices are logged out, the current session stays).</summary>
+    public static async Task RevokeOtherSessionsAsync(int userId, string exceptSessionId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE sessions SET revoked = TRUE WHERE user_id = @u AND id <> @s", conn);
+        cmd.Parameters.AddWithValue("@u", userId);
+        cmd.Parameters.AddWithValue("@s", exceptSessionId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     /* ---------------- rate limiting ---------------- */
 
     /// <summary>DB-backed rate limit. Returns (allowed, retryAfterSeconds).
@@ -543,12 +568,11 @@ public static class AppDb
         await cmd.ExecuteNonQueryAsync();
     }
 
-    /* OTP throttle with an escalating lockout (Han 2026-11-21): the first
-     * lockout is 1 minute, the second 5 minutes, the third and later
-     * 10 minutes — never longer. The lock count lives in a companion
-     * key ("{key}:locks"); a successful OTP send resets it, so normal
-     * use always starts again at 1 minute. Returns (allowed,
-     * retryAfterSeconds). */
+    /* Escalating throttle (Han 2026-11-21): the first lockout is 1 minute,
+     * the second 5 minutes, the third and later 10 minutes — never longer.
+     * The lock count lives in a companion key ("{key}:locks"); a successful
+     * login resets it, so normal use always starts again at 1 minute.
+     * Returns (allowed, retryAfterSeconds). */
 
     static async Task<int> GetAttemptsAsync(NpgsqlConnection conn, string key)
     {
@@ -568,7 +592,7 @@ public static class AppDb
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public static async Task<(bool Allowed, int RetryAfter)> CheckOtpThrottleAsync(
+    public static async Task<(bool Allowed, int RetryAfter)> CheckEscalatingThrottleAsync(
         string key, int maxAttempts, int windowSeconds)
     {
         await using var conn = await DataSource!.OpenConnectionAsync();

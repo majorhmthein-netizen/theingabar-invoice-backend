@@ -1,24 +1,31 @@
 /* Theingabar Invoice — HTML-only version: authentication + sessions.
  *
- * Security model (OTP-only, 2026-11-21):
- * - Mechanics log in with their phone + a 6-digit OTP sent by SMSPoh's
- *   hosted Verify API (see SmsPoh.cs). NO password anywhere: signup takes
- *   username + phone only, login takes phone + code. Old password_hash
- *   values are dead data, never verified. The Admin signs in with Google
- *   only — OTP login refuses admin accounts, so a stolen phone's SMS
- *   inbox can never become an admin login.
+ * Security model (PIN login, 2026-11-21 — OTP REMOVED, see below):
+ * - Mechanics log in with their phone + a 4-digit PIN. Every account
+ *   starts with the default PIN 1111 (Han 2026-11-21: "all user default
+ *   passcode pin 1111"). The PIN is stored hashed (PBKDF2-SHA256) in
+ *   users.password_hash; a NULL hash also means 1111, for accounts
+ *   created before PIN login. The PIN can be changed on the User page
+ *   (changing it logs out other devices). The Admin signs in with
+ *   Google only — PIN login refuses admin accounts.
+ * - OTP is GONE (Han 2026-11-21: "Otp မသုံးတော့ဘူး"): SMSPoh has no
+ *   working sender — no registered sender ID, and the test sender
+ *   "SMSPohTest" is rejected with the same error 10 Invalid Sender ID.
+ *   SmsPoh.cs stays in the repo, parked, in case a sender ID is ever
+ *   approved; nothing calls it. Old password_hash values from the
+ *   password era are dead data, never verified as passwords.
  * - Sessions are opaque ids in Postgres; the browser cookie holds only
  *   the id. NO expiry: a login lasts until the user taps Log out, or the
- *   Admin revokes/suspends/rejects the account (Han 2026-11-21: every
- *   re-login costs one SMS, so frequent logins waste money). The cookie
- *   has no Expires/Max-Age (it lives as long as the browser keeps it)
- *   and the server row expires only after 100 years.
+ *   Admin revokes/suspends/rejects the account. The cookie has no
+ *   Expires/Max-Age (it lives as long as the browser keeps it) and the
+ *   server row expires only after 100 years.
  * - The __Host- cookie prefix is used only over HTTPS (browsers reject a
  *   __Host- cookie without Secure); over plain HTTP (local dev) the
  *   plain name is used instead.
- * - Rate limits are DB-backed (AppDb.rate_limits): OTP requests 3 per
- *   10 min per phone+IP (each request costs one SMS) + 10 per hour per IP;
- *   admin 3 failures → 5-min lockout.
+ * - Rate limits are DB-backed (AppDb.rate_limits): PIN attempts 5 per
+ *   10 min per phone+IP (then an escalating lockout: 1st 1 min, 2nd
+ *   5 min, 3rd+ 10 min) + 10 per hour per IP; admin 3 failures →
+ *   5-min lockout.
  * - Google sign-in is admin-only; the allowlist is the two addresses.
  */
 public static class Auth
@@ -86,30 +93,71 @@ public static class Auth
         return ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 
+    /* ---------------- PIN ---------------- */
+
+    /// <summary>Default PIN for every account (Han 2026-11-21).
+    /// A NULL stored hash also means this PIN.</summary>
+    public const string DefaultPin = "1111";
+
+    /// <summary>PBKDF2-SHA256 hash of a PIN, stored as
+    /// "pbkdf2-sha256:iterations:salt:hash" (base64 salt+hash).</summary>
+    public static string HashPin(string pin)
+    {
+        var salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        var hash = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+            pin, salt, 100_000, System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
+        return "pbkdf2-sha256:100000:" + Convert.ToBase64String(salt) + ":" +
+            Convert.ToBase64String(hash);
+    }
+
+    /// <summary>Verifies a PIN against its stored hash. A NULL/empty hash
+    /// means no PIN was ever set, so the default PIN 1111 works.</summary>
+    public static bool VerifyPin(string pin, string? storedHash)
+    {
+        if (string.IsNullOrEmpty(storedHash)) return pin == DefaultPin;
+        var parts = storedHash.Split(':');
+        if (parts.Length != 4 || parts[0] != "pbkdf2-sha256" ||
+            !int.TryParse(parts[1], out var iters)) return false;
+        var salt = Convert.FromBase64String(parts[2]);
+        var expected = Convert.FromBase64String(parts[3]);
+        var actual = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+            pin, salt, iters, System.Security.Cryptography.HashAlgorithmName.SHA256,
+            expected.Length);
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(actual, expected);
+    }
+
+    public static string? ValidatePin(string? pin)
+    {
+        if (string.IsNullOrWhiteSpace(pin)) return "PIN is required";
+        var p = pin.Trim();
+        if (p.Length != 4 || !p.All(char.IsDigit)) return "PIN must be 4 digits";
+        return null;
+    }
+
     /* ---------------- rate limiting ---------------- */
 
-    /// <summary>OTP requests: 5 per 10 min per phone+IP, plus 10 per hour
+    /// <summary>PIN login attempts: 5 per 10 min per phone+IP, plus 10 per hour
     /// per IP. Lockouts escalate: 1st 1 min, 2nd 5 min, 3rd+ 10 min
-    /// (see Db.CheckOtpThrottleAsync). Returns (allowed, retryAfterSeconds).</summary>
-    public static async Task<(bool Allowed, int RetryAfter)> CheckOtpRequestLimitAsync(string phone, string ip)
+    /// (see Db.CheckEscalatingThrottleAsync). Returns (allowed, retryAfterSeconds).</summary>
+    public static async Task<(bool Allowed, int RetryAfter)> CheckPinAttemptLimitAsync(string phone, string ip)
     {
-        var r = await AppDb.CheckOtpThrottleAsync("otp-req:" + phone + ":" + ip, 5, 600);
+        var r = await AppDb.CheckEscalatingThrottleAsync("pin-attempt:" + phone + ":" + ip, 5, 600);
         if (!r.Allowed) return r;
-        return await AppDb.CheckOtpThrottleAsync("otp-req-ip:" + ip, 10, 3600);
+        return await AppDb.CheckEscalatingThrottleAsync("pin-attempt-ip:" + ip, 10, 3600);
     }
 
-    public static async Task RecordOtpRequestAsync(string phone, string ip)
+    public static async Task RecordPinAttemptAsync(string phone, string ip)
     {
-        await AppDb.RecordAttemptAsync("otp-req:" + phone + ":" + ip, 600);
-        await AppDb.RecordAttemptAsync("otp-req-ip:" + ip, 3600);
+        await AppDb.RecordAttemptAsync("pin-attempt:" + phone + ":" + ip, 600);
+        await AppDb.RecordAttemptAsync("pin-attempt-ip:" + ip, 3600);
     }
 
-    /// <summary>A successful OTP send forgives past lockouts: the next
+    /// <summary>A successful PIN login forgives past lockouts: the next
     /// lockout starts again at 1 minute.</summary>
-    public static async Task ResetOtpLockCountAsync(string phone, string ip)
+    public static async Task ResetPinLockCountAsync(string phone, string ip)
     {
-        await AppDb.ResetRateLimitAsync("otp-req:" + phone + ":" + ip + ":locks");
-        await AppDb.ResetRateLimitAsync("otp-req-ip:" + ip + ":locks");
+        await AppDb.ResetRateLimitAsync("pin-attempt:" + phone + ":" + ip + ":locks");
+        await AppDb.ResetRateLimitAsync("pin-attempt-ip:" + ip + ":locks");
     }
 
     /// <summary>Admin Google sign-in failures: 3 failures → 5-min lockout.</summary>

@@ -1,4 +1,10 @@
-/* Theingabar Invoice — SMSPoh Verify API client (OTP-only login).
+/* Theingabar Invoice — SMSPoh Verify API client (OTP login).
+ *
+ * PARKED 2026-11-21 (Han: "Otp မသုံးတော့ဘူး"): OTP login is removed —
+ * SMSPoh has no working sender (no registered sender ID; the test
+ * sender "SMSPohTest" is rejected with the same error 10 Invalid
+ * Sender ID). This file is kept, unreferenced, in case a sender ID is
+ * ever approved and OTP is revived. Nothing calls it.
  *
  * The backend never generates, stores or checks OTP codes itself:
  * SMSPoh's hosted Verify API does that server-side. Two calls:
