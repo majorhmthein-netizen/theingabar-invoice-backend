@@ -1,0 +1,36 @@
+/* Theingabar Invoice — export card on the invoice page.
+   Thumbnail preview + format pills + "Save successful" toast.
+   Loaded only on /invoice/{id} (see Invoice.cshtml Styles section). */
+.export-card { display: flex; gap: 14px; align-items: center; }
+.export-thumb[hidden], .export-thumb-pdf[hidden] { display: none; }
+.export-thumb {
+  width: 84px; height: auto; display: block; flex: 0 0 auto;
+  border: 1px solid #e3e8ef; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, .12);
+  background: #fff;
+}
+.export-thumb-pdf {
+  width: 84px; height: 119px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #b98a1c; border-radius: 8px;
+  background: linear-gradient(180deg, #0d5da6, #0a467e);
+  color: #fff; font-weight: 800; font-size: 1rem; letter-spacing: .08em;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, .12);
+}
+.export-name { font-weight: 800; font-size: .95rem; color: #14202e; margin-bottom: 6px; word-break: break-all; }
+.fmt-pill {
+  min-height: 32px; padding: 4px 14px; border-radius: 999px;
+  border: 1px solid #c3cedb; background: #fff; color: #24344a;
+  font-weight: 700; font-size: .85rem; cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.fmt-pill:hover { border-color: #0b5394; color: #0b5394; transform: translateY(-1px); }
+.fmt-pill.active { background: #0b5394; border-color: #0b5394; color: #fff; }
+.export-toast {
+  position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%) translateY(8px);
+  z-index: 30; background: #14202e; color: #fff; font-weight: 700; font-size: .9rem;
+  padding: 10px 18px; border-radius: 999px; opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.export-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
