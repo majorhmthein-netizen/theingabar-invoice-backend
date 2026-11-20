@@ -21,7 +21,7 @@
         <tr>
           <td>@(i + 1)</td>
           <td><input name="desc@(i)" value="@(it?.Desc ?? "")" maxlength="200" /></td>
-          <td><input name="amount@(i)" value="@(it is null ? "" : it.Amount.ToString())" inputmode="numeric" /></td>
+          <td><input name="amount@(i)" value="@(it is null || it.Amount == 0 ? "" : it.Amount.ToString())" placeholder="0" inputmode="numeric" /></td>
           <td><button class="mini-btn ghost" type="submit" asp-page-handler="RemoveRow" asp-route-row="@i" title="Remove row">✕</button></td>
         </tr>
       }

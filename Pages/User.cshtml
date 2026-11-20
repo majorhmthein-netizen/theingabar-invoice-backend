@@ -13,38 +13,12 @@
 </div>
 
 <div class="panel">
-  <h2>Change PIN</h2>
-  <p class="hint">Your PIN is 4 digits. Other devices logged in as you are logged out when you change it.</p>
-  <form method="post" asp-page-handler="ChangePin">
-    <label class="fld"><span>Current PIN</span><input name="CurrentPin" type="password" required inputmode="numeric" maxlength="4" placeholder="••••" /></label>
-    <label class="fld"><span>New PIN</span><input name="NewPin" type="password" required inputmode="numeric" maxlength="4" placeholder="••••" /></label>
-    <button class="btn" type="submit">Change PIN</button>
-  </form>
-</div>
-
-<div class="panel panel-fill">
-  <h2>KBZ Pay template</h2>
-  <p class="hint">Your name, number and QR shown on the invoices you issue. Leave the QR empty to keep the current one.</p>
-  <div class="scroll">
-  <form method="post" asp-page-handler="Template" enctype="multipart/form-data">
-    <label class="fld"><span>KBZ Pay name</span><input name="KbzName" value="@Model.KbzName" maxlength="128" /></label>
-    <label class="fld"><span>KBZ Pay number</span><input name="KbzNumber" value="@Model.KbzNumber" maxlength="20" inputmode="tel" /></label>
-    <label class="fld"><span>QR image (JPG/PNG, max 2 MB)</span><input name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-    @if (Model.User.HasQr)
-    {
-      <p><img src="/qr/user/@Model.User.Id" alt="Current QR" style="width:118px;height:118px" /></p>
-    }
-    <button class="btn" type="submit">Save template</button>
-  </form>
-  </div>
-</div>
-
-<div class="panel">
-  <h2>My invoices</h2>
-  <p>
+  <h2>Profile</h2>
+  <p><a class="btn" href="/User/ChangePin">Change PIN</a></p>
+  <p><a class="btn" href="/User/MyQr">My QR</a></p>
   @if (Model.CanWrite)
   {
-    <a class="btn gold" href="/form">New invoice</a>
+    <p><a class="btn gold" href="/form">New invoice</a></p>
   }
-  </p>
+  <p><a class="btn ghost" href="/logout">Log out</a></p>
 </div>
