@@ -1,27 +1,37 @@
 /* Theingabar Invoice — backend (Render Web Service), C# / ASP.NET Core 8.
  *
- * Faithful port of the Node server (server.js): same behaviour, same API,
- * same validation messages, same JSON shapes, same Postgres schema and
- * startup migrations, same JSON-file fallback store.
- * - Serves the PWA frontend statically from ./public/
- * - REST API under /api/invoices, backed by PostgreSQL when DATABASE_URL
- *   is set, otherwise by a local JSON file ./data/invoices.json
- * - Optional API-key auth: if INVOICE_API_KEY is set, every /api/* request
- *   except /api/health must send header X-API-Key. The key is never logged.
+ * Two parts in one service:
+ *  (1) Legacy minimal API (faithful port of the Node server): same
+ *      behaviour, same validation messages, same JSON shapes, same
+ *      Postgres schema and startup migrations, same JSON-file fallback
+ *      store. Serves the old PWA from ./public/ under /legacy/ during
+ *      the HTML-only transition. Kept working until cutover.
+ *  (2) HTML-only frontend (Razor Pages): server-rendered pages, no
+ *      custom JS in served HTML except the cache-only service worker
+ *      registration (one tiny file, no app logic). Sessions are opaque
+ *      ids in Postgres; login is username + password (PBKDF2); admin
+ *      signs in via server-side Google OAuth (env GOOGLE_CLIENT_ID /
+ *      GOOGLE_CLIENT_SECRET). No secrets in served HTML. See Db.cs,
+ *      Auth.cs and HTML-ONLY-PLAN.md.
  *
- * Env: PORT (Render sets it; default 10000), DATABASE_URL, INVOICE_API_KEY,
- * NODE_ENV (read for compatibility; the Node server did not use it either).
- *
- * One intentional difference from Node: the JSON fallback store is guarded
- * by a lock, because Kestrel serves requests concurrently while Node was
- * single-threaded. Behaviour is otherwise identical.
+ * Env: PORT (Render sets it; default 10000), DATABASE_URL,
+ * INVOICE_API_KEY (legacy /api only), NODE_ENV (compat, unused),
+ * GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (admin sign-in; optional —
+ * admin sign-in is unavailable without them, everything else works).
  */
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -83,152 +93,328 @@ if (string.IsNullOrEmpty(apiKey))
 else
     Console.WriteLine("[backend] API key auth enabled for /api/* (except /api/health)");
 
+// HTML-only tables (users, meta, sessions, invoice_no_seq, rate_limits)
+// + seeds. Only when Postgres is available; without it the new pages
+// report "database unavailable" and the legacy /api JSON store still works.
+if (pg is not null) await AppDb.InitAsync(pg.DataSource);
+
+var googleId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID") ?? "";
+var googleSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET") ?? "";
+var googleConfigured = !string.IsNullOrEmpty(googleId) && !string.IsNullOrEmpty(googleSecret);
+if (!googleConfigured)
+    Console.WriteLine("[backend] Google sign-in not configured (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET unset) — admin Google sign-in unavailable.");
+
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
+
+// Data-protection keys (antiforgery tokens) persist across restarts.
+var keysDir = Path.Combine(AppContext.BaseDirectory, "data", "protection-keys");
+Directory.CreateDirectory(keysDir);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDir));
+
+builder.Services.AddRazorPages()
+    .AddCookieTempDataProvider(o =>
+    {
+        o.Cookie.Name = "tgb-flash";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.Cookie.SameSite = SameSiteMode.Lax;
+    });
+builder.Services.AddAntiforgery();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IInvoiceStore>(store);
+
+if (googleConfigured)
+{
+    builder.Services.AddAuthentication(o => o.DefaultScheme = "TmpGoogle")
+        .AddCookie("TmpGoogle", o =>
+        {
+            o.Cookie.Name = "tgb-oauth";
+            o.Cookie.HttpOnly = true;
+            o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            o.Cookie.SameSite = SameSiteMode.Lax;
+            o.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+        })
+        .AddGoogle("Google", o =>
+        {
+            o.ClientId = googleId;
+            o.ClientSecret = googleSecret;
+            o.CallbackPath = "/auth/google/signin-google";
+            o.SignInScheme = "TmpGoogle";
+            o.SaveTokens = true;
+        });
+}
+
 var app = builder.Build();
-app.Run(HandleAsync);
-await app.StartAsync();
+
+/* --- Security headers on every response (plan §7.1 #9) --- */
+app.Use(async (ctx, next) =>
+{
+    var h = ctx.Response.Headers;
+    // No custom JS in served HTML except the cache-only service-worker
+    // registration file (/js/sw-register.js); hence script-src 'self'.
+    h["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; " +
+        "font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+    h["X-Content-Type-Options"] = "nosniff";
+    h["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    if (ctx.Request.IsHttps)
+        h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    await next();
+});
+
+app.UseStaticFiles(); // wwwroot: css, fonts, js, icons, manifest, sw.js
+app.UseRouting();
+if (googleConfigured) app.UseAuthentication();
+
+app.MapRazorPages();
+
+/* ------------------------------------------------------------------ */
+/* Legacy API (unchanged behaviour — kept until cutover)                */
+/* ------------------------------------------------------------------ */
+
+app.MapGet("/api/health", async (HttpResponse res) =>
+    await SendJson(res, 200, new { ok = true, store = storeName, time = IsoNow() }));
+
+app.MapGet("/api/invoices", async (HttpRequest req, HttpResponse res) =>
+{
+    if (!await CheckApiKeyAsync(req, res)) return;
+    await SendJson(res, 200, await store.ListAsync());
+});
+
+app.MapPost("/api/invoices", async (HttpRequest req, HttpResponse res) =>
+{
+    if (!await CheckApiKeyAsync(req, res)) return;
+    var body = await ReadJsonBody(req);
+    if (body is null) { await SendJson(res, 400, new { error = "invalid JSON" }); return; }
+    var err = ValidateInvoice(body.Value);
+    if (err is not null) { await SendJson(res, 400, new { error = err }); return; }
+    InvoiceRow created;
+    try { created = await store.CreateAsync(CleanInvoice(body.Value)); }
+    catch (DuplicateNoException)
+    {
+        await SendJson(res, 409, new { error = "invoice number already exists" });
+        return;
+    }
+    await SendJson(res, 201, created);
+});
+
+app.MapMethods("/api/invoices/{id:long}", new[] { "PUT", "DELETE" },
+    async (long id, HttpRequest req, HttpResponse res) =>
+{
+    if (!await CheckApiKeyAsync(req, res)) return;
+    if (req.Method == "PUT")
+    {
+        var body = await ReadJsonBody(req);
+        if (body is null) { await SendJson(res, 400, new { error = "invalid JSON" }); return; }
+        var err = ValidateInvoice(body.Value);
+        if (err is not null) { await SendJson(res, 400, new { error = err }); return; }
+        InvoiceRow? updated;
+        try { updated = await store.UpdateAsync(id, CleanInvoice(body.Value)); }
+        catch (DuplicateNoException)
+        {
+            await SendJson(res, 409, new { error = "invoice number already exists" });
+            return;
+        }
+        if (updated is null) { await SendJson(res, 404, new { error = "invoice not found" }); return; }
+        await SendJson(res, 200, updated);
+        return;
+    }
+    if (!await store.DeleteAsync(id)) { await SendJson(res, 404, new { error = "invoice not found" }); return; }
+    await SendJson(res, 200, new { ok = true });
+});
+
+app.MapGet("/api/export.csv", async (HttpRequest req, HttpResponse res) =>
+{
+    if (!await CheckApiKeyAsync(req, res)) return;
+    var csv = InvoicesToCsv(await store.ListAsync());
+    res.StatusCode = 200;
+    res.ContentType = "text/csv; charset=utf-8";
+    res.Headers.ContentDisposition = "attachment; filename=\"theingabar-invoice-log.csv\"";
+    await res.WriteAsync(csv, Shared.Utf8NoBom);
+});
+
+app.Map("/api/{**rest}", async (HttpResponse res) =>
+    await SendJson(res, 404, new { error = "not found" }));
+
+/* --- Session-authenticated CSV export for the HTML-only log --- */
+app.MapGet("/log/export", async (HttpContext ctx) =>
+{
+    if (!AppDb.Available)
+    {
+        ctx.Response.StatusCode = 503;
+        return;
+    }
+    var me = await Auth.CurrentUserAsync(ctx);
+    if (me is null) { ctx.Response.Redirect("/login?returnUrl=/log/export"); return; }
+    var list = await store.ListAsync();
+    if (!me.IsAdmin) list = list.Where(r => r.UserId == me.User.LocalId).ToList();
+    var csv = InvoicesToCsv(list);
+    ctx.Response.StatusCode = 200;
+    ctx.Response.ContentType = "text/csv; charset=utf-8";
+    ctx.Response.Headers.ContentDisposition = "attachment; filename=\"theingabar-invoice-log.csv\"";
+    await ctx.Response.WriteAsync(csv, Shared.Utf8NoBom);
+});
+
+/* ------------------------------------------------------------------ */
+/* QR images (public — the same QR is printed on the public invoice)    */
+/* ------------------------------------------------------------------ */
+
+app.MapGet("/qr/meta", async (HttpResponse res) =>
+{
+    if (!AppDb.Available) { await SendJson(res, 503, new { error = "database unavailable" }); return; }
+    var (data, type) = await AppDb.GetMetaQrAsync();
+    if (data is null) { res.StatusCode = 404; return; }
+    res.ContentType = type ?? "image/jpeg";
+    await res.Body.WriteAsync(data);
+});
+
+app.MapGet("/qr/user/{id:int}", async (int id, HttpResponse res) =>
+{
+    if (!AppDb.Available) { await SendJson(res, 503, new { error = "database unavailable" }); return; }
+    var (data, type) = await AppDb.GetUserQrAsync(id);
+    if (data is null) { res.StatusCode = 404; return; }
+    res.ContentType = type ?? "image/jpeg";
+    await res.Body.WriteAsync(data);
+});
+
+/* ------------------------------------------------------------------ */
+/* Invoice PDF / PNG exports (approved users only)                      */
+/* ------------------------------------------------------------------ */
+
+app.MapGet("/invoice/{id:long}.pdf", async (long id, HttpContext ctx) =>
+{
+    var me = await Auth.CurrentUserAsync(ctx);
+    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
+    var row = (await store.ListAsync()).FirstOrDefault(r => r.Id == id);
+    if (row is null) { ctx.Response.StatusCode = 404; return; }
+    var pdf = await PdfService.RenderAsync(row, me.User);
+    ctx.Response.StatusCode = 200;
+    ctx.Response.ContentType = "application/pdf";
+    ctx.Response.Headers.ContentDisposition =
+        $"attachment; filename=\"invoice-{row.No ?? row.Id.ToString()}.pdf\"";
+    await ctx.Response.Body.WriteAsync(pdf);
+});
+
+app.MapGet("/invoice/{id:long}.png", async (long id, HttpContext ctx) =>
+{
+    var me = await Auth.CurrentUserAsync(ctx);
+    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
+    var row = (await store.ListAsync()).FirstOrDefault(r => r.Id == id);
+    if (row is null) { ctx.Response.StatusCode = 404; return; }
+    var png = await PngService.RenderAsync(row, me.User);
+    if (png is null) { ctx.Response.StatusCode = 503; return; }
+    ctx.Response.StatusCode = 200;
+    ctx.Response.ContentType = "image/png";
+    ctx.Response.Headers.ContentDisposition =
+        $"attachment; filename=\"invoice-{row.No ?? row.Id.ToString()}.png\"";
+    await ctx.Response.Body.WriteAsync(png);
+});
+
+/* ------------------------------------------------------------------ */
+/* Admin Google sign-in (server-side OAuth code flow)                   */
+/* ------------------------------------------------------------------ */
+
+app.MapGet("/auth/google", async (HttpContext ctx) =>
+{
+    if (!googleConfigured) { ctx.Response.Redirect("/admin?error=google-not-configured"); return; }
+    var (allowed, retry) = await Auth.CheckAdminLimitAsync(Auth.ClientIp(ctx));
+    if (!allowed)
+    {
+        ctx.Response.Redirect($"/admin?error=locked&retry={retry}");
+        return;
+    }
+    await ctx.ChallengeAsync("Google",
+        new AuthenticationProperties { RedirectUri = "/auth/google/callback" });
+});
+
+app.MapGet("/auth/google/callback", async (HttpContext ctx) =>
+{
+    if (!googleConfigured) { ctx.Response.Redirect("/admin?error=google-not-configured"); return; }
+    var ip = Auth.ClientIp(ctx);
+    var result = await ctx.AuthenticateAsync("TmpGoogle");
+    if (!result.Succeeded || result.Principal is null)
+    {
+        await Auth.RecordAdminFailureAsync(ip);
+        ctx.Response.Redirect("/admin?error=google-failed");
+        return;
+    }
+    var accessToken = result.Properties?.GetTokenValue("access_token");
+    string? email = null;
+    bool emailVerified = false;
+    string? sub = null;
+    if (!string.IsNullOrEmpty(accessToken))
+    {
+        try
+        {
+            var http = ctx.RequestServices.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var reqMsg = new HttpRequestMessage(HttpMethod.Get,
+                "https://openidconnect.googleapis.com/v1/userinfo");
+            reqMsg.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            var resp = await http.SendAsync(reqMsg);
+            if (resp.IsSuccessStatusCode)
+            {
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+                var root = doc.RootElement;
+                if (root.TryGetProperty("email", out var e)) email = e.GetString();
+                if (root.TryGetProperty("email_verified", out var v)) emailVerified = v.GetBoolean();
+                if (root.TryGetProperty("sub", out var s)) sub = s.GetString();
+            }
+        }
+        catch { /* fall through to deny */ }
+    }
+    await ctx.SignOutAsync("TmpGoogle");
+    if (email is null || !emailVerified || !Auth.IsAdminEmail(email))
+    {
+        await Auth.RecordAdminFailureAsync(ip);
+        ctx.Response.Redirect("/admin?error=not-admin");
+        return;
+    }
+    // Bind the Google identity to the seed Han admin user.
+    var admin = await AppDb.FindUserByLocalIdAsync("han");
+    if (admin is null || !admin.IsAdmin)
+    {
+        ctx.Response.Redirect("/admin?error=no-admin-user");
+        return;
+    }
+    if (admin.AuthUid is not null && sub is not null && admin.AuthUid != sub)
+    {
+        await Auth.RecordAdminFailureAsync(ip);
+        ctx.Response.Redirect("/admin?error=not-admin");
+        return;
+    }
+    if (admin.AuthUid is null && sub is not null)
+        await AppDb.SetUserAuthUidAsync(admin.Id, sub);
+    await AppDb.ResetRateLimitAsync("admin:" + ip);
+    await Auth.SignInAsync(ctx, admin.Id, isAdmin: true);
+    ctx.Response.Redirect("/admin");
+});
+
+/* ------------------------------------------------------------------ */
+/* Legacy PWA (old frontend) — served under /legacy/ until cutover      */
+/* ------------------------------------------------------------------ */
+
+var legacyContentTypes = new FileExtensionContentTypeProvider();
+legacyContentTypes.Mappings[".webmanifest"] = "application/manifest+json";
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(publicDir),
+    RequestPath = "/legacy",
+    ContentTypeProvider = legacyContentTypes,
+});
+app.MapGet("/legacy", () => Results.Redirect("/legacy/index.html"));
+
 Console.WriteLine($"[backend] listening on port {port} (store: {storeName})");
-await app.WaitForShutdownAsync();
+app.Run();
 
 /* ------------------------------------------------------------------ */
 /* Request dispatch (mirrors the Node server's routing, in order)       */
 /* ------------------------------------------------------------------ */
-
-async Task HandleAsync(HttpContext ctx)
-{
-    try
-    {
-        var req = ctx.Request;
-        var res = ctx.Response;
-        string pathname;
-        try
-        {
-            // Node: decodeURIComponent(new URL(req.url).pathname)
-            pathname = Uri.UnescapeDataString(req.Path.Value ?? "/");
-        }
-        catch
-        {
-            throw; // malformed %-escape -> 500, like Node's decodeURIComponent throw
-        }
-
-        /* --- API --- */
-        if (pathname == "/api/health")
-        {
-            await SendJson(res, 200, new { ok = true, store = storeName, time = IsoNow() });
-            return;
-        }
-        if (pathname == "/api/invoices" || pathname.StartsWith("/api/invoices/", StringComparison.Ordinal))
-        {
-            if (!await CheckApiKeyAsync(req, res)) return;
-
-            if (pathname == "/api/invoices" && req.Method == "GET")
-            {
-                await SendJson(res, 200, await store.ListAsync());
-                return;
-            }
-            if (pathname == "/api/invoices" && req.Method == "POST")
-            {
-                var body = await ReadJsonBody(req);
-                if (body is null) { await SendJson(res, 400, new { error = "invalid JSON" }); return; }
-                var err = ValidateInvoice(body.Value);
-                if (err is not null) { await SendJson(res, 400, new { error = err }); return; }
-                InvoiceRow created;
-                try { created = await store.CreateAsync(CleanInvoice(body.Value)); }
-                catch (DuplicateNoException)
-                {
-                    await SendJson(res, 409, new { error = "invoice number already exists" });
-                    return;
-                }
-                await SendJson(res, 201, created);
-                return;
-            }
-            var m = Regex.Match(pathname, @"^/api/invoices/(\d+)$");
-            if (m.Success)
-            {
-                var id = long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
-                if (req.Method == "PUT")
-                {
-                    var body = await ReadJsonBody(req);
-                    if (body is null) { await SendJson(res, 400, new { error = "invalid JSON" }); return; }
-                    var err = ValidateInvoice(body.Value);
-                    if (err is not null) { await SendJson(res, 400, new { error = err }); return; }
-                    InvoiceRow? updated;
-                    try { updated = await store.UpdateAsync(id, CleanInvoice(body.Value)); }
-                    catch (DuplicateNoException)
-                    {
-                        await SendJson(res, 409, new { error = "invoice number already exists" });
-                        return;
-                    }
-                    if (updated is null) { await SendJson(res, 404, new { error = "invoice not found" }); return; }
-                    await SendJson(res, 200, updated);
-                    return;
-                }
-                if (req.Method == "DELETE")
-                {
-                    if (!await store.DeleteAsync(id)) { await SendJson(res, 404, new { error = "invoice not found" }); return; }
-                    await SendJson(res, 200, new { ok = true });
-                    return;
-                }
-            }
-            await SendJson(res, 404, new { error = "not found" });
-            return;
-        }
-        if (pathname == "/api/export.csv")
-        {
-            if (!await CheckApiKeyAsync(req, res)) return;
-            if (req.Method != "GET")
-            {
-                await SendJson(res, 405, new { error = "method not allowed" });
-                return;
-            }
-            var csv = InvoicesToCsv(await store.ListAsync());
-            res.StatusCode = 200;
-            res.ContentType = "text/csv; charset=utf-8";
-            res.Headers.ContentDisposition = "attachment; filename=\"theingabar-invoice-log.csv\"";
-            await res.WriteAsync(csv, Shared.Utf8NoBom);
-            return;
-        }
-        if (pathname.StartsWith("/api/", StringComparison.Ordinal))
-        {
-            await SendJson(res, 404, new { error = "not found" });
-            return;
-        }
-
-        /* --- Static frontend --- */
-        if (req.Method != "GET" && req.Method != "HEAD")
-        {
-            await SendJson(res, 405, new { error = "method not allowed" });
-            return;
-        }
-        var rel = pathname == "/" ? "index.html" : pathname.TrimStart('/');
-        var filePath = Path.GetFullPath(Path.Combine(publicDir, rel));
-        var publicRoot = Path.GetFullPath(publicDir);
-        if (filePath != publicRoot && !filePath.StartsWith(publicRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal))
-        {
-            await SendJson(res, 403, new { error = "forbidden" });
-            return;
-        }
-        if (!File.Exists(filePath))
-        {
-            await SendJson(res, 404, new { error = "not found" });
-            return;
-        }
-        var ext = Path.GetExtension(filePath).ToLowerInvariant();
-        res.StatusCode = 200;
-        res.ContentType = MimeMap.TryGetValue(ext, out var mime) ? mime : "application/octet-stream";
-        res.Headers.CacheControl = ext == ".html" ? "no-cache" : "public, max-age=3600";
-        if (req.Method == "HEAD") return;
-        await res.SendFileAsync(filePath);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("[backend] request failed: " + ex.Message);
-        if (!ctx.Response.HasStarted)
-            await SendJson(ctx.Response, 500, new { error = "internal error" });
-    }
-}
 
 async Task<bool> CheckApiKeyAsync(HttpRequest req, HttpResponse res)
 {
@@ -421,18 +607,18 @@ static string InvoicesToCsv(List<InvoiceRow> list)
 /* Data model                                                           */
 /* ------------------------------------------------------------------ */
 
-sealed record InvoiceItem(
+public sealed record InvoiceItem(
     [property: System.Text.Json.Serialization.JsonPropertyName("desc")] string Desc,
     [property: System.Text.Json.Serialization.JsonPropertyName("amount")] long Amount);
 
-sealed record InvoiceInput(
+public sealed record InvoiceInput(
     string Uid, string? No, string? UserId, long? CreatedAt,
     string Date, string Customer, List<InvoiceItem> Items, long Total);
 
 /// <summary>One invoice row, serialised in the Node server's exact field
 /// order: id, uid, no, userId, createdAt, date, customer, items, total,
 /// created_at, updated_at.</summary>
-sealed record InvoiceRow(
+public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("id")] long Id,
     [property: System.Text.Json.Serialization.JsonPropertyName("uid")] string Uid,
     [property: System.Text.Json.Serialization.JsonPropertyName("no")] string? No,
@@ -445,9 +631,9 @@ sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("created_at")] string CreatedAtStr,
     [property: System.Text.Json.Serialization.JsonPropertyName("updated_at")] string UpdatedAtStr);
 
-sealed class DuplicateNoException : Exception;
+public sealed class DuplicateNoException : Exception;
 
-interface IInvoiceStore
+public interface IInvoiceStore
 {
     Task<List<InvoiceRow>> ListAsync();
     Task<InvoiceRow> CreateAsync(InvoiceInput inv);
@@ -459,11 +645,13 @@ interface IInvoiceStore
 /* PostgreSQL store (Npgsql)                                            */
 /* ------------------------------------------------------------------ */
 
-sealed class PostgresStore : IInvoiceStore
+public sealed class PostgresStore : IInvoiceStore
 {
     private readonly NpgsqlDataSource _ds;
 
     private PostgresStore(NpgsqlDataSource ds) => _ds = ds;
+
+    public NpgsqlDataSource DataSource => _ds;
 
     private const string SelectCols =
         "id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at";
@@ -721,7 +909,7 @@ sealed class PostgresStore : IInvoiceStore
 /* JSON file store (fallback when DATABASE_URL is unset)                 */
 /* ------------------------------------------------------------------ */
 
-sealed class JsonStore : IInvoiceStore
+public sealed class JsonStore : IInvoiceStore
 {
     private readonly string _file;
     private readonly object _gate = new();
@@ -918,7 +1106,7 @@ sealed class JsonStore : IInvoiceStore
 
 /// <summary>Helpers shared by the top-level dispatcher and the store classes
 /// (top-level local functions are not visible from classes declared below).</summary>
-static class Shared
+public static class Shared
 {
     public static readonly JsonSerializerOptions JsonOpts = new()
     {
