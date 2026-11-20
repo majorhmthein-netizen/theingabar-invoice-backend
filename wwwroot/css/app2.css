@@ -166,6 +166,8 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .btn:hover, .mini-btn:hover { background: var(--navy-deep); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(11, 83, 148, .3); }
 .btn:active, .mini-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(11, 83, 148, .25); }
 .mini-btn { min-height: 36px; padding: 6px 10px; font-size: 0.9rem; }
+/* Profile menu buttons: full width so every button is the same size. */
+.menu-btn { width: 100%; }
 .btn.gold { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); box-shadow: 0 2px 6px rgba(185, 138, 28, .35); }
 .btn.gold:hover { filter: brightness(1.06); box-shadow: 0 6px 14px rgba(185, 138, 28, .4); }
 .btn.danger { background: #a83232; box-shadow: 0 2px 6px rgba(168, 50, 50, .25); }
