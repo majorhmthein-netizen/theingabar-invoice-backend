@@ -136,6 +136,28 @@ async function initPostgres() {
     await pool.query(
       "CREATE UNIQUE INDEX IF NOT EXISTS invoices_no_unique ON invoices(no) WHERE no IS NOT NULL"
     );
+    // One-time data fix (v2, 2026-11-20): the Nissan Safari seed invoice
+    // was first stored as 20261119-001 and was renumbered to 20261119-002
+    // on the devices; make the server row agree so the server list and
+    // CSV export show 002 too. Idempotent (a second run matches no rows)
+    // and restricted to the seed row only (customer + date + total — the
+    // same fields the device-side patch matches on). Skipped entirely if
+    // a 20261119-002 row already exists, so the unique index above can
+    // never be violated by this rename. A failure here is only logged —
+    // it must not take the Postgres store down.
+    try {
+      const ren = await pool.query(
+        "UPDATE invoices SET no = '20261119-002' " +
+          "WHERE no = '20261119-001' AND customer = 'Nissan Safari' " +
+          "AND date = '2026-11-19' AND total = 300000 " +
+          "AND NOT EXISTS (SELECT 1 FROM invoices WHERE no = '20261119-002')"
+      );
+      if (ren.rowCount > 0) {
+        console.log("[backend] renamed seed invoice 20261119-001 -> 20261119-002");
+      }
+    } catch (e) {
+      console.error("[backend] seed invoice renumber skipped:", e.message);
+    }
     storeName = "postgres";
     console.log("[backend] store: postgres (table invoices ready)");
     return true;
