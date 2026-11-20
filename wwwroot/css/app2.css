@@ -1,25 +1,47 @@
 /* Theingabar Invoice — HTML-only app layout.
-   Kept small and structural on purpose: the UI rework after this build
-   is LAYOUT DESIGN ONLY, so layout lives here (and in the Tailwind
-   utilities used in the pages), never mixed into the page logic.
-   The invoice paper itself is styled only by css/invoice.css (frozen). */
+   PREMIUM THEME (2026-11-21, Han): navy / white / black / gold.
+   Navy #0b5394 is the brand, white panels, black ink, gold #b98a1c/#d4af37
+   accents. Flex layouts, soft shadows, hover lift on everything
+   tappable. The invoice paper itself is styled only by css/invoice.css
+   (frozen) — this file is the APP chrome around it. */
+
+:root {
+  --navy: #0b5394;
+  --navy-deep: #0a467e;
+  --navy-dark: #082f57;
+  --gold: #b98a1c;
+  --gold-bright: #d4af37;
+  --gold-soft: #d9a92f;
+  --ink: #14202e;
+  --black: #000;
+  --white: #fff;
+  --bg: #eef1f5;
+  --line: #e3e8ef;
+  --muted: #5b6a7a;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05), 0 4px 12px rgba(16, 24, 40, .04);
+  --shadow-md: 0 2px 6px rgba(16, 24, 40, .06), 0 10px 28px rgba(16, 24, 40, .07);
+}
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
   margin: 0;
   font-family: "Noto Sans Myanmar", "Archivo", sans-serif;
-  background: #f2f5f8;
-  color: #14202e;
+  background: linear-gradient(180deg, #f5f7fa 0%, #e9edf2 100%);
+  color: var(--ink);
   overflow: hidden; /* fixed screen: panels scroll, the page does not */
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none; /* app mood: touching text never selects it */
   user-select: none;
   -webkit-touch-callout: none;
 }
-a { color: #0b5394; }
+a { color: var(--navy); }
 button, input, select, textarea { font: inherit; }
 input, textarea { -webkit-user-select: text; user-select: text; } /* form fields stay editable/selectable */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
 
 /* --- toolbar + tab bar (fixed) --- */
 .toolbar {
@@ -27,32 +49,53 @@ input, textarea { -webkit-user-select: text; user-select: text; } /* form fields
   display: flex; align-items: center; gap: 8px;
   min-height: 52px; padding: 6px 12px;
   padding-top: max(6px, env(safe-area-inset-top));
-  background: #0b5394; color: #fff;
+  background: linear-gradient(180deg, #0d5da6 0%, var(--navy) 100%);
+  color: #fff;
+  border-bottom: 2px solid var(--gold);
+  box-shadow: 0 2px 12px rgba(8, 47, 87, .35);
 }
 .toolbar a { color: #fff; text-decoration: none; }
-.t-title { font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
-.t-title .dot { width: 10px; height: 10px; border-radius: 50%; background: #d9a92f; display: inline-block; }
+/* Shop wordmark in the toolbar — U Moe handwritten, like the paper title. */
+.t-title {
+  font-family: "U Moe", "Noto Serif Myanmar", "Noto Sans Myanmar", serif;
+  font-weight: 400; font-size: 1.3rem; line-height: 1;
+  display: flex; align-items: center; gap: 8px;
+}
+.t-title .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold-soft); display: inline-block; box-shadow: 0 0 6px rgba(217, 169, 47, .8); }
 .toolbar-sp { flex: 1; }
+/* Translucent pill mini-buttons on the navy toolbar (Log in / Sign up /
+   username / Log out). On white panels the same buttons use the solid
+   navy style below — the translucent rule must stay scoped to .toolbar,
+   or white text goes invisible on white (seen 2026-11-20). */
+.toolbar .mini-btn {
+  background: rgba(255, 255, 255, .16);
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 999px;
+  box-shadow: none;
+}
+.toolbar .mini-btn:hover { background: rgba(255, 255, 255, .28); transform: translateY(-1px); }
 .tabbar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
   display: flex; justify-content: center;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-  background: #fff; border-top: 1px solid #dfe5ec;
+  background: #fff; border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(16, 24, 40, .06);
 }
 .invoice-fab {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
   min-height: 48px; padding: 12px 30px; border-radius: 999px; text-decoration: none;
-  color: #fff; background: #0b5394; font-weight: 800; font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(11, 83, 148, .35);
-  transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+  color: #fff; background: linear-gradient(180deg, #0d5da6 0%, var(--navy-deep) 100%);
+  font-weight: 800; font-size: 1rem;
+  box-shadow: 0 4px 14px rgba(11, 83, 148, .4), inset 0 1px 0 rgba(255, 255, 255, .25);
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.invoice-fab:hover { background: #0a467e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 83, 148, .4); }
+.invoice-fab:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(11, 83, 148, .45), inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 0 2px rgba(212, 175, 55, .45); }
 .invoice-fab:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(11, 83, 148, .3); }
 
 /* double-back-to-exit toast */
 .exit-toast {
   position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%) translateY(8px);
-  z-index: 30; background: #14202e; color: #fff; font-weight: 700; font-size: .9rem;
+  z-index: 30; background: var(--ink); color: #fff; font-weight: 700; font-size: .9rem;
   padding: 10px 18px; border-radius: 999px; opacity: 0; pointer-events: none;
   transition: opacity .18s ease, transform .18s ease; white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0,0,0,.25);
@@ -78,70 +121,114 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 
 /* --- panels, forms, buttons (Tailwind covers most; these are the rest) --- */
 .panel {
-  background: #fff; border: 1px solid #dfe5ec; border-radius: 12px;
-  padding: 14px; margin-bottom: 12px;
+  background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px; margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
 }
-.panel h2 { margin: 0 0 10px; font-size: 1.05rem; }
-.panel h3 { margin: 14px 0 6px; font-size: 0.95rem; }
+.panel h2 {
+  margin: 0 0 10px; font-size: 1.05rem; font-weight: 800; color: var(--navy);
+  padding-bottom: 8px; border-bottom: 1px solid #eef1f5; position: relative;
+}
+/* Gold rule under every section title — the premium accent. */
+.panel h2::after {
+  content: ""; position: absolute; left: 0; bottom: -1px;
+  width: 32px; height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold-bright), var(--gold));
+}
+.panel h3 { margin: 14px 0 6px; font-size: 0.95rem; font-weight: 800; color: #24344a; }
+/* Shop wordmark on Home — U Moe, navy, no section rule. */
+.panel h2.shop-title {
+  font-family: "U Moe", "Noto Serif Myanmar", "Noto Sans Myanmar", serif;
+  font-weight: 400; font-size: 1.5rem; color: var(--navy);
+  padding-bottom: 0; border-bottom: 0;
+}
+.panel h2.shop-title::after { display: none; }
 .fld { display: block; width: 100%; margin-bottom: 10px; }
-.fld > span { display: block; font-size: 0.85rem; font-weight: 700; color: #40536a; margin-bottom: 3px; }
+.fld > span { display: block; font-size: 0.85rem; font-weight: 700; color: #1f2f45; margin-bottom: 3px; letter-spacing: .01em; }
 .fld input, .fld select, .fld textarea {
   width: 100%; min-height: 44px; padding: 8px 10px;
-  border: 1px solid #b9c4d0; border-radius: 8px; background: #fff;
+  border: 1px solid #c3cedb; border-radius: 10px; background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.fld input:focus, .fld select:focus, .fld textarea:focus {
+  border-color: var(--navy); outline: none;
+  box-shadow: 0 0 0 3px rgba(11, 83, 148, .15);
 }
 .fld textarea { min-height: 72px; }
 .btn, .mini-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  min-height: 40px; padding: 8px 14px; border-radius: 8px; border: 0;
-  background: #0b5394; color: #fff; font-weight: 700; text-decoration: none;
+  min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 0;
+  background: var(--navy); color: #fff; font-weight: 700; text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 2px 6px rgba(11, 83, 148, .25);
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease, border-color .18s ease, color .18s ease;
 }
+.btn:hover, .mini-btn:hover { background: var(--navy-deep); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(11, 83, 148, .3); }
+.btn:active, .mini-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(11, 83, 148, .25); }
 .mini-btn { min-height: 36px; padding: 6px 10px; font-size: 0.9rem; }
-.btn.gold { background: #b98a1c; }
-.btn.danger { background: #a83232; }
-.btn.ghost { background: #eef2f6; color: #24344a; }
-.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.gold { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); box-shadow: 0 2px 6px rgba(185, 138, 28, .35); }
+.btn.gold:hover { filter: brightness(1.06); box-shadow: 0 6px 14px rgba(185, 138, 28, .4); }
+.btn.danger { background: #a83232; box-shadow: 0 2px 6px rgba(168, 50, 50, .25); }
+.btn.danger:hover { background: #8f2b2b; box-shadow: 0 6px 14px rgba(168, 50, 50, .3); }
+.btn.ghost { background: #fff; color: #24344a; border: 1px solid #d5dde6; box-shadow: var(--shadow-sm); }
+.btn.ghost:hover { background: #fff; color: var(--navy); border-color: var(--navy); box-shadow: var(--shadow-md); }
+.btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: 0 2px 6px rgba(11, 83, 148, .25); }
 .inline-form { display: inline; margin: 0; }
-/* Translucent mini-buttons ONLY on the navy toolbar (Log out). On white
-   panels the same rule made white text on near-white invisible — that is
-   why Approve/Reject looked missing on the Admin pages (2026-11-20). */
-.toolbar .inline-form .mini-btn { background: rgba(255, 255, 255, 0.16); }
 .field-error { color: #a83232; font-size: 0.85rem; margin: 2px 0 10px; }
 .flash {
   background: #e2f2e6; border: 1px solid #9fd0a8; color: #1e5c2a;
-  border-radius: 8px; padding: 10px 12px; margin: 0 0 12px;
+  border-radius: 12px; padding: 10px 12px; margin: 0 0 12px;
+  box-shadow: var(--shadow-sm);
 }
 .flash-err { background: #fbe7e7; border-color: #e0a3a3; color: #7c1d1d; }
-.hint { color: #5b6a7a; font-size: 0.85rem; }
+.hint { color: var(--muted); font-size: 0.85rem; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .sp { flex: 1; }
 
 /* --- log --- */
 .log-row {
   display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
-  padding: 10px 2px; border-bottom: 1px solid #e6ebf0;
+  padding: 10px 8px; border-bottom: 1px solid #e6ebf0; border-radius: 8px;
+  transition: background .15s ease;
 }
-.log-row .amt { margin-left: auto; font-weight: 700; }
-.log-no { font-weight: 700; color: #0b5394; }
+.log-row:hover { background: #f6f9fc; }
+.log-row .amt { margin-left: auto; font-weight: 700; color: var(--black); }
+.log-no { font-weight: 700; color: var(--navy); }
 .ok { color: #1e7a34; font-weight: 700; }
 .totals-line {
   display: flex; justify-content: space-between; font-weight: 800;
-  padding: 10px 2px;
+  padding: 10px 2px; color: var(--navy);
+  border-top: 2px solid var(--gold);
 }
 .user-chip {
   display: inline-flex; align-items: center; gap: 8px;
   min-height: 44px; padding: 6px 12px 6px 6px; margin: 0 6px 6px 0;
-  border: 1px solid #dfe5ec; border-radius: 999px; background: #fff;
-  color: #14202e; text-decoration: none; font-weight: 700;
+  border: 1px solid var(--line); border-radius: 999px; background: #fff;
+  color: var(--ink); text-decoration: none; font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
+.user-chip:hover { border-color: var(--gold-bright); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.user-chip:hover .avatar { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); }
 .avatar {
   width: 32px; height: 32px; border-radius: 50%;
-  background: #0b5394; color: #fff;
+  background: linear-gradient(180deg, #0d5da6, var(--navy-deep)); color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
+  transition: background .18s ease;
 }
 table.items { width: 100%; border-collapse: collapse; }
-table.items th, table.items td { padding: 6px 4px; text-align: left; }
-table.items input { width: 100%; min-height: 44px; padding: 6px 8px; border: 1px solid #b9c4d0; border-radius: 8px; }
+table.items th {
+  padding: 6px 4px; text-align: left;
+  font-size: .8rem; font-weight: 800; color: var(--navy);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+table.items td { padding: 6px 4px; text-align: left; }
+table.items input {
+  width: 100%; min-height: 44px; padding: 6px 8px;
+  border: 1px solid #c3cedb; border-radius: 10px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+table.items input:focus { border-color: var(--navy); outline: none; box-shadow: 0 0 0 3px rgba(11, 83, 148, .15); }
 
 /* --- print: the paper page prints cleanly via the frozen print CSS --- */
 @media print {
@@ -151,4 +238,5 @@ table.items input { width: 100%; min-height: 44px; padding: 6px 8px; border: 1px
   .scroll { overflow: visible; }
   .panel-fill { display: block; overflow: visible; }
   form.fill { display: block; }
+  .panel { box-shadow: none; }
 }

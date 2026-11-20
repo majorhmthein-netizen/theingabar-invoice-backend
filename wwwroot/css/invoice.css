@@ -13,9 +13,9 @@
       }
       .inv-word{
         font-family:"Archivo",sans-serif;font-weight:800;letter-spacing:.55em;
-        font-size:19px;color:#14202e;margin-top:2px;text-indent:.55em;
+        font-size:19px;color:#0b5394;margin-top:2px;text-indent:.55em;
       }
-      .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.28em;font-size:10.5px;color:#b98a1c;margin-top:5px;text-indent:.28em}
+      .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.28em;font-size:10.5px;color:#D4AF37;margin-top:5px;text-indent:.28em}
       .inv-services{font-weight:700;font-size:13.5px;line-height:1.75;margin-top:10px;color:#24344a}
       .inv-addr{font-weight:600;font-size:13px;margin-top:6px;color:#24344a;line-height:1.7}
       .inv-addr b{font-weight:800}
@@ -25,11 +25,12 @@
       table.inv-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14.5px}
       table.inv-table th{
         text-align:left;border-top:2px solid #14202e;border-bottom:1.5px solid #14202e;
-        padding:8px 6px;font-family:"Archivo",sans-serif;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
+        padding:8px 6px;font-family:"Archivo",sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
       }
       table.inv-table th.amt,table.inv-table td.amt{text-align:right}
       table.inv-table td{padding:8px 6px;border-bottom:1px solid #dfe5ec;vertical-align:top;line-height:1.55}
-      table.inv-table td.amt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+      table.inv-table td.amt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700;color:#000000}
+      table.inv-table td.desc{font-weight:300;color:#000000}
       table.inv-table td.no{color:#7b8a99;width:30px}
       tr.inv-total td{
         border-bottom:none;border-top:2px solid #14202e;padding:11px 6px 4px;
