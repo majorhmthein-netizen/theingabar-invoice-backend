@@ -1,0 +1,27 @@
+@page
+@model AdminMetaModel
+@{
+    ViewData["Title"] = "Shop metadata";
+}
+<div class="panel">
+  <h2>Shop metadata</h2>
+  <p class="hint">Admin only. These values appear on every invoice. Leave the QR empty to keep the current one.</p>
+  <form method="post" enctype="multipart/form-data">
+    <label class="fld"><span>Shop name</span><input name="Shop" value="@Model.Shop" required maxlength="100" /></label>
+    <label class="fld"><span>Group line</span><input name="Group" value="@Model.Group" required maxlength="200" /></label>
+    <label class="fld"><span>Services</span><textarea name="Services" required>@Model.Services</textarea></label>
+    <label class="fld"><span>Address</span><input name="Address" value="@Model.Address" required maxlength="200" /></label>
+    <label class="fld"><span>Phone 1</span><input name="Phone1" value="@Model.Phone1" required maxlength="20" /></label>
+    <label class="fld"><span>Phone 2</span><input name="Phone2" value="@Model.Phone2" required maxlength="20" /></label>
+    <label class="fld"><span>Default KBZ Pay name</span><input name="PayName" value="@Model.PayName" required maxlength="128" /></label>
+    <label class="fld"><span>Default KBZ Pay number</span><input name="PayNum" value="@Model.PayNum" required maxlength="20" /></label>
+    <label class="fld"><span>Closing line</span><input name="Thanks" value="@Model.Thanks" required maxlength="200" /></label>
+    <label class="fld"><span>Default QR image (JPG/PNG, max 2 MB)</span><input name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+    @if (Model.HasQr)
+    {
+      <p><img src="/qr/meta" alt="Current default QR" style="width:118px;height:118px" /></p>
+    }
+    <button class="btn" type="submit">Save metadata</button>
+  </form>
+  <p><a href="/admin">Back to Admin</a></p>
+</div>

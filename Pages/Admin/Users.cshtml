@@ -1,0 +1,51 @@
+@page
+@model AdminUsersModel
+@{
+    ViewData["Title"] = "All users";
+}
+<div class="panel">
+  <h2>All users</h2>
+  <p class="hint">Max 5 mechanics. Approve, reject, suspend, revoke sessions, or reset a locked account's login counters.</p>
+  @foreach (var u in Model.Users)
+  {
+    <div class="log-row">
+      <span><b>@u.Username</b> — @u.Phone — @u.Status@(u.IsAdmin ? " · Admin" : "")</span>
+      <span class="amt">
+        @if (u.Status == "pending")
+        {
+          <form method="post" asp-page-handler="Approve" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Approve</button>
+          </form>
+          <form method="post" asp-page-handler="Reject" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Reject</button>
+          </form>
+        }
+        @if (u.Status == "approved" && !u.IsAdmin)
+        {
+          <form method="post" asp-page-handler="Suspend" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Suspend</button>
+          </form>
+        }
+        @if (u.Status is "suspended" or "rejected")
+        {
+          <form method="post" asp-page-handler="Unsuspend" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Re-approve</button>
+          </form>
+        }
+        <form method="post" asp-page-handler="RevokeSessions" class="inline-form">
+          <input type="hidden" name="UserId" value="@u.Id" />
+          <button class="mini-btn" type="submit">Revoke sessions</button>
+        </form>
+        <form method="post" asp-page-handler="ResetRateLimit" class="inline-form">
+          <input type="hidden" name="UserId" value="@u.Id" />
+          <button class="mini-btn" type="submit">Reset login lockout</button>
+        </form>
+      </span>
+    </div>
+  }
+  <p><a href="/admin">Back to Admin</a></p>
+</div>

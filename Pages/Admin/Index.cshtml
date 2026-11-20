@@ -1,0 +1,85 @@
+@page
+@model AdminIndexModel
+@{
+    ViewData["Title"] = "Admin";
+}
+@if (!Model.IsAdmin)
+{
+  <div class="panel">
+    <h2>Admin sign-in</h2>
+    <p class="hint">Admin access is by verified Google sign-in only. Knowing an email address alone grants nothing.</p>
+    @if (Model.Error is not null)
+    {
+      <p class="field-error">@Model.Error</p>
+    }
+    @if (Model.GoogleConfigured)
+    {
+      <p><a class="btn" href="/auth/google">Sign in with Google</a></p>
+    }
+    else
+    {
+      <p class="field-error">Google sign-in is not configured on this server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET missing).</p>
+    }
+  </div>
+}
+else
+{
+  <div class="panel">
+    <h2>Admin — @Model.Me!.User.Username</h2>
+    <p><a class="btn" href="/admin/meta">Shop metadata</a> <a class="btn" href="/admin/users">All users</a></p>
+  </div>
+
+  <div class="panel">
+    <h2>Pending users</h2>
+    @if (Model.Pending.Count == 0)
+    {
+      <p class="hint">No users waiting for approval.</p>
+    }
+    @foreach (var u in Model.Pending)
+    {
+      <div class="log-row">
+        <span><b>@u.Username</b> — @u.Phone</span>
+        <span class="amt">
+          <form method="post" asp-page-handler="Approve" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Approve</button>
+          </form>
+          <form method="post" asp-page-handler="Reject" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Reject</button>
+          </form>
+        </span>
+      </div>
+    }
+  </div>
+
+  <div class="panel">
+    <h2>Users</h2>
+    @foreach (var u in Model.Users)
+    {
+      <div class="log-row">
+        <span><b>@u.Username</b> — @u.Phone — @u.Status@(u.IsAdmin ? " · Admin" : "")</span>
+        <span class="amt">
+          @if (u.Status == "approved" && !u.IsAdmin)
+          {
+            <form method="post" asp-page-handler="Suspend" class="inline-form">
+              <input type="hidden" name="UserId" value="@u.Id" />
+              <button class="mini-btn" type="submit">Suspend</button>
+            </form>
+          }
+          @if (u.Status == "suspended")
+          {
+            <form method="post" asp-page-handler="Unsuspend" class="inline-form">
+              <input type="hidden" name="UserId" value="@u.Id" />
+              <button class="mini-btn" type="submit">Unsuspend</button>
+            </form>
+          }
+          <form method="post" asp-page-handler="RevokeSessions" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Revoke sessions</button>
+          </form>
+        </span>
+      </div>
+    }
+  </div>
+}
