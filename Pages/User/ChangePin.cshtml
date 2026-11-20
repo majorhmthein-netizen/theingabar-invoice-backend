@@ -1,0 +1,16 @@
+@page
+@model UserChangePinModel
+@{
+    ViewData["Title"] = "Change PIN";
+}
+<div class="panel panel-fill">
+  <h2>Change PIN</h2>
+  <p class="hint">Your PIN is 4 digits. Other devices logged in as you are logged out when you change it.</p>
+  <div class="scroll">
+  <form method="post">
+    <label class="fld"><span>Current PIN</span><input name="CurrentPin" type="password" required inputmode="numeric" maxlength="4" placeholder="••••" /></label>
+    <label class="fld"><span>New PIN</span><input name="NewPin" type="password" required inputmode="numeric" maxlength="4" placeholder="••••" /></label>
+    <button class="btn" type="submit">Change PIN</button>
+  </form>
+  </div>
+</div>

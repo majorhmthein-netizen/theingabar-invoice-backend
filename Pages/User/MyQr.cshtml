@@ -1,0 +1,21 @@
+@page
+@model UserMyQrModel
+@{
+    ViewData["Title"] = "My QR";
+}
+<div class="panel panel-fill">
+  <h2>My QR</h2>
+  <p class="hint">Your name, number and QR shown on the invoices you issue. Leave the QR empty to keep the current one.</p>
+  <div class="scroll">
+  <form method="post" enctype="multipart/form-data">
+    <label class="fld"><span>KBZ Pay name</span><input name="KbzName" value="@Model.KbzName" maxlength="128" /></label>
+    <label class="fld"><span>KBZ Pay number</span><input name="KbzNumber" value="@Model.KbzNumber" maxlength="20" inputmode="tel" /></label>
+    <label class="fld"><span>QR image (JPG/PNG, max 2 MB)</span><input name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+    @if (Model.HasQr)
+    {
+      <p><img src="/qr/user/@Model.UserId" alt="Current QR" style="width:118px;height:118px" /></p>
+    }
+    <button class="btn" type="submit">Save template</button>
+  </form>
+  </div>
+</div>
