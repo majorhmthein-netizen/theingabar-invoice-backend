@@ -1,0 +1,127 @@
+/* Theingabar Invoice — HTML-only app layout.
+   Kept small and structural on purpose: the UI rework after this build
+   is LAYOUT DESIGN ONLY, so layout lives here (and in the Tailwind
+   utilities used in the pages), never mixed into the page logic.
+   The invoice paper itself is styled only by css/invoice.css (frozen). */
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: "Noto Sans Myanmar", "Archivo", sans-serif;
+  background: #f2f5f8;
+  color: #14202e;
+  overflow: hidden; /* fixed screen: panels scroll, the page does not */
+  -webkit-tap-highlight-color: transparent;
+}
+a { color: #0b5394; }
+button, input, select, textarea { font: inherit; }
+
+/* --- toolbar + tab bar (fixed) --- */
+.toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+  display: flex; align-items: center; gap: 8px;
+  min-height: 52px; padding: 6px 12px;
+  padding-top: max(6px, env(safe-area-inset-top));
+  background: #0b5394; color: #fff;
+}
+.toolbar a { color: #fff; text-decoration: none; }
+.t-title { font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+.t-title .dot { width: 10px; height: 10px; border-radius: 50%; background: #d9a92f; display: inline-block; }
+.toolbar-sp { flex: 1; }
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  display: flex; gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: #fff; border-top: 1px solid #dfe5ec;
+}
+.tab-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  min-height: 48px; border-radius: 8px; text-decoration: none;
+  color: #24344a; background: #eef2f6; font-weight: 700;
+}
+.tab-btn:hover { background: #dfe8f2; }
+
+.wrap {
+  position: fixed; top: 52px; bottom: 60px; left: 0; right: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+@media (min-width: 900px) {
+  .wrap { max-width: 860px; margin: 0 auto; }
+}
+
+/* --- panels, forms, buttons (Tailwind covers most; these are the rest) --- */
+.panel {
+  background: #fff; border: 1px solid #dfe5ec; border-radius: 12px;
+  padding: 14px; margin-bottom: 12px;
+}
+.panel h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.panel h3 { margin: 14px 0 6px; font-size: 0.95rem; }
+.fld { display: block; width: 100%; margin-bottom: 10px; }
+.fld > span { display: block; font-size: 0.85rem; font-weight: 700; color: #40536a; margin-bottom: 3px; }
+.fld input, .fld select, .fld textarea {
+  width: 100%; min-height: 44px; padding: 8px 10px;
+  border: 1px solid #b9c4d0; border-radius: 8px; background: #fff;
+}
+.fld textarea { min-height: 72px; }
+.btn, .mini-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 8px 14px; border-radius: 8px; border: 0;
+  background: #0b5394; color: #fff; font-weight: 700; text-decoration: none;
+  cursor: pointer;
+}
+.mini-btn { min-height: 36px; padding: 6px 10px; font-size: 0.9rem; }
+.btn.gold { background: #b98a1c; }
+.btn.danger { background: #a83232; }
+.btn.ghost { background: #eef2f6; color: #24344a; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.inline-form { display: inline; margin: 0; }
+/* Translucent mini-buttons ONLY on the navy toolbar (Log out). On white
+   panels the same rule made white text on near-white invisible — that is
+   why Approve/Reject looked missing on the Admin pages (2026-11-20). */
+.toolbar .inline-form .mini-btn { background: rgba(255, 255, 255, 0.16); }
+.field-error { color: #a83232; font-size: 0.85rem; margin: 2px 0 10px; }
+.flash {
+  background: #e2f2e6; border: 1px solid #9fd0a8; color: #1e5c2a;
+  border-radius: 8px; padding: 10px 12px; margin: 0 0 12px;
+}
+.flash-err { background: #fbe7e7; border-color: #e0a3a3; color: #7c1d1d; }
+.hint { color: #5b6a7a; font-size: 0.85rem; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sp { flex: 1; }
+
+/* --- log --- */
+.log-row {
+  display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+  padding: 10px 2px; border-bottom: 1px solid #e6ebf0;
+}
+.log-row .amt { margin-left: auto; font-weight: 700; }
+.log-no { font-weight: 700; color: #0b5394; }
+.ok { color: #1e7a34; font-weight: 700; }
+.totals-line {
+  display: flex; justify-content: space-between; font-weight: 800;
+  padding: 10px 2px;
+}
+.user-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 6px 12px 6px 6px; margin: 0 6px 6px 0;
+  border: 1px solid #dfe5ec; border-radius: 999px; background: #fff;
+  color: #14202e; text-decoration: none; font-weight: 700;
+}
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #0b5394; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+table.items { width: 100%; border-collapse: collapse; }
+table.items th, table.items td { padding: 6px 4px; text-align: left; }
+table.items input { width: 100%; min-height: 44px; padding: 6px 8px; border: 1px solid #b9c4d0; border-radius: 8px; }
+
+/* --- print: the paper page prints cleanly via the frozen print CSS --- */
+@media print {
+  body { overflow: visible; background: #fff; }
+  .toolbar, .tabbar, .no-print { display: none !important; }
+  .wrap { position: static; overflow: visible; padding: 0; max-width: none; }
+}
