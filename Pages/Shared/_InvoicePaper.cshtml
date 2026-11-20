@@ -1,0 +1,48 @@
+@* Frozen invoice paper — HTML structure and classes are exactly the PWA's
+   (extract/invoice-paper.md, source lines 505–540). Do not change the
+   layout: the printed invoice format stays exactly as approved.
+   Model: InvoicePaperModel. Razor auto-encodes all values (same effect
+   as the PWA's esc()/textContent). *@
+@model InvoicePaperModel
+<div class="invoice" id="invoice">
+  <div class="inv-head">
+    <div class="inv-shop" id="pShop">@Model.Meta.Shop</div>
+    <div class="inv-word">INVOICE</div>
+    <div class="inv-group" id="pGroup">@Model.Meta.Group</div>
+    <div class="inv-services" id="pServices">@Model.Meta.Services</div>
+    <div class="inv-addr">
+      <b>Address –</b> <span id="pAddress">@Model.Meta.Address</span><br />
+      <b>Contact –</b> <span id="pPhones">@Model.Meta.Phone1, @Model.Meta.Phone2</span>
+    </div>
+  </div>
+  <div class="inv-meta">
+    <div><span class="k">Customer Info</span><span class="v" id="pCustomer">@(string.IsNullOrWhiteSpace(Model.Customer) ? "—" : Model.Customer)</span></div>
+    <div style="text-align:right"><span class="k">Date</span><span class="v" id="pDate">@Paper.FmtDate(Model.Date)</span></div>
+    <div style="text-align:right"><span class="k">No.</span><span class="v" id="pNo">@Model.No</span></div>
+  </div>
+  <table class="inv-table">
+    <thead>
+      <tr><th style="width:30px">No.</th><th>Description</th><th class="amt">Amount (MMK)</th></tr>
+    </thead>
+    <tbody id="pItems">
+    @for (var i = 0; i < Model.Items.Count; i++)
+    {
+      var it = Model.Items[i];
+      <tr><td class="no">@(i + 1)</td><td>@(string.IsNullOrWhiteSpace(it.Desc) ? "—" : it.Desc)</td><td class="amt">@Paper.Fmt(it.Amount)</td></tr>
+    }
+    </tbody>
+    <tbody>
+      <tr class="inv-total"><td></td><td>Total (MMK)</td><td class="amt" id="pTotal">@Paper.Fmt(Model.Total)</td></tr>
+    </tbody>
+  </table>
+  <div class="inv-pay">
+    <div>
+      <div class="p-k">Payment</div>
+      <div class="p-name">KBZ Pay</div>
+      <div class="p-num">No. <span id="pPayNum">@Model.PayNum</span></div>
+      <div>Name. <span id="pPayName" style="font-weight:700">@Model.PayName</span></div>
+    </div>
+    <img id="pQr" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" crossorigin="anonymous" />
+  </div>
+  <div class="inv-thanks"><span class="en" id="pThanks">@Model.Meta.Thanks</span></div>
+</div>
