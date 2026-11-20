@@ -78,7 +78,10 @@ button, input, select, textarea { font: inherit; }
 .btn.ghost { background: #eef2f6; color: #24344a; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .inline-form { display: inline; margin: 0; }
-.inline-form .mini-btn { background: rgba(255, 255, 255, 0.16); }
+/* Translucent mini-buttons ONLY on the navy toolbar (Log out). On white
+   panels the same rule made white text on near-white invisible — that is
+   why Approve/Reject looked missing on the Admin pages (2026-11-20). */
+.toolbar .inline-form .mini-btn { background: rgba(255, 255, 255, 0.16); }
 .field-error { color: #a83232; font-size: 0.85rem; margin: 2px 0 10px; }
 .flash {
   background: #e2f2e6; border: 1px solid #9fd0a8; color: #1e5c2a;
