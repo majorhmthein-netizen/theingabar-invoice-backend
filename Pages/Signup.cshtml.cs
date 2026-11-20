@@ -16,7 +16,7 @@ public class SignupModel : AppPageModel
         if (err is not null) { Error = err; return Page(); }
         if (await AppDb.CountUsersAsync() >= 5)
         {
-            Error = "Maximum 5 mechanics — ask the Admin.";
+            Error = "Maximum 5 mechanics.";
             return Page();
         }
         if (await AppDb.FindUserByUsernameAsync(Username) is not null)
@@ -25,7 +25,7 @@ public class SignupModel : AppPageModel
             return Page();
         }
         await AppDb.CreateUserAsync(Username, Auth.NormalizePhone(Phone));
-        Flash("Signed up — waiting for Admin approval. You can log in with OTP now; issuing invoices unlocks after approval.");
-        return RedirectToPage("/Login");
+        Flash("Signed up — pending.");
+        return RedirectToPage("/Login", new { phone = Auth.NormalizePhone(Phone) });
     }
 }

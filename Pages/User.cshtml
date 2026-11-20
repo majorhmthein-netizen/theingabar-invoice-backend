@@ -5,10 +5,10 @@
 }
 <div class="panel">
   <h2>@Model.User!.Username</h2>
-  <p>Phone: @Model.User.Phone<br />Status: <b>@Model.User.Status</b>@(Model.User.IsAdmin ? " · Admin" : "")</p>
+  <p>Phone: @Model.User.Phone<br />Status: <b>@Model.User.Status</b></p>
   @if (!Model.CanWrite)
   {
-    <p class="flash">Waiting for Admin approval — read-only until approved.</p>
+    <p class="flash">pending</p>
   }
 </div>
 

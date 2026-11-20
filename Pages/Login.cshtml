@@ -11,12 +11,20 @@
     <form method="post" asp-page-handler="Request">
       <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
       <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
-      @if (Model.Error is not null)
+      @if (Model.LockoutSeconds > 0)
+      {
+        <p class="field-error" id="lockout-error">Too many attempts — try again in <span id="lockout-countdown" data-seconds="@Model.LockoutSeconds">@Model.LockoutText</span>.</p>
+      }
+      else if (Model.Error is not null)
       {
         <p class="field-error">@Model.Error</p>
       }
-      <button class="btn" type="submit">Send code</button>
+      <button class="btn" type="submit" id="send-code-btn" @(Model.LockoutSeconds > 0 ? "disabled" : "")>Send code</button>
     </form>
+    @if (Model.LockoutSeconds > 0)
+    {
+      <script src="/js/countdown.js" defer></script>
+    }
   }
   else
   {
@@ -36,5 +44,5 @@
       <button class="btn ghost" type="submit">Send a new code</button>
     </form>
   }
-  <p class="hint">No account yet? <a href="/signup">Sign up</a> — the Admin approves new mechanics.</p>
+  <p class="hint">No account yet? <a href="/signup">Sign up</a> — approval is needed before you can issue invoices.</p>
 </div>

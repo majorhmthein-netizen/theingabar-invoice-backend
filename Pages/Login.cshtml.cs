@@ -18,6 +18,14 @@ public class LoginModel : AppPageModel
     [BindProperty] public string? ReturnUrl { get; set; }
     public string? Error { get; private set; }
     public bool Step2 { get; private set; }
+    /// <summary>Seconds left on the OTP lockout (0 = not locked). The page
+    /// shows a live countdown from this value.</summary>
+    public int LockoutSeconds { get; private set; }
+    public string LockoutText => FormatCountdown(LockoutSeconds);
+
+    /// <summary>Countdown text: "1:00" for a minute or more, "45s" below.</summary>
+    public static string FormatCountdown(int seconds) =>
+        seconds >= 60 ? $"{seconds / 60}:{(seconds % 60):D2}" : $"{seconds}s";
 
     const string OtpPhoneKey = "OtpPhone";
     const string OtpRequestIdKey = "OtpRequestId";
@@ -48,16 +56,15 @@ public class LoginModel : AppPageModel
         return RedirectToPage("/User");
     }
 
-    static string RetryText(int retry) =>
-        retry >= 60 ? $"{(retry + 59) / 60} minute(s)" : $"{retry} seconds";
-
-    public async Task<IActionResult> OnGetAsync(string? returnUrl)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl, string? phone)
     {
         await LoadCommonAsync();
         if (Me is not null) return RedirectToPage("/User");
         var pending = PendingOtp();
         Step2 = pending is not null;
         if (Step2) Phone = pending!.Value.Phone;
+        else if (!string.IsNullOrEmpty(phone) && Auth.ValidatePhone(phone) is null)
+            Phone = Auth.NormalizePhone(phone);
         ReturnUrl = returnUrl;
         return Page();
     }
@@ -74,37 +81,39 @@ public class LoginModel : AppPageModel
         var (allowed, retry) = await Auth.CheckOtpRequestLimitAsync(phone, ip);
         if (!allowed)
         {
-            Error = $"Too many codes — try again in {RetryText(retry)}.";
+            LockoutSeconds = retry;
             return Page();
         }
         await Auth.RecordOtpRequestAsync(phone, ip);
         var user = await AppDb.FindUserByPhoneAsync(phone);
         if (user is null)
         {
-            Error = "No account for this phone — sign up or ask the Admin.";
+            Error = "No account for this phone — sign up first.";
             return Page();
         }
         if (user.IsAdmin)
         {
-            Error = "Admins sign in with Google at /admin.";
+            Error = "This account signs in with Google.";
             return Page();
         }
         if (user.Status is "rejected" or "suspended")
         {
-            Error = "This account is " + user.Status + ". Ask the Admin.";
+            Error = "This account is " + user.Status + ".";
             return Page();
         }
         var (ok, requestId, smsErr) = await SmsPoh.RequestOtpAsync(phone);
         if (!ok || requestId is null)
         {
             Error = smsErr == "config"
-                ? "OTP is not set up yet — ask the Admin."
+                ? "OTP is not set up yet — try again later."
                 : "Could not send the code — try again.";
             return Page();
         }
         TempData[OtpPhoneKey] = phone;
         TempData[OtpRequestIdKey] = requestId;
         TempData[OtpRequestedAtKey] = DateTime.UtcNow.Ticks.ToString();
+        // A code sent fine forgives past lockouts (next lock starts at 1 min).
+        await Auth.ResetOtpLockCountAsync(phone, ip);
         // Redirect (PRG): a refresh must not re-send the code.
         TempData["Flash"] = "Code sent to " + phone + " — valid 5 minutes.";
         return RedirectToPage("/Login", new { returnUrl = ReturnUrl });
@@ -142,7 +151,7 @@ public class LoginModel : AppPageModel
             Error = smsErr == "wrong-code"
                 ? "Wrong code — try again."
                 : smsErr == "config"
-                    ? "OTP is not set up yet — ask the Admin."
+                    ? "OTP is not set up yet — try again later."
                     : "Could not check the code — try again.";
             return Page();
         }
@@ -150,19 +159,19 @@ public class LoginModel : AppPageModel
         var user = await AppDb.FindUserByPhoneAsync(pending.Value.Phone);
         if (user is null || user.IsAdmin)
         {
-            Error = "Account not found — ask the Admin.";
+            Error = "Account not found.";
             Step2 = false;
             return Page();
         }
         if (user.Status is "rejected" or "suspended")
         {
-            Error = "This account is " + user.Status + ". Ask the Admin.";
+            Error = "This account is " + user.Status + ".";
             Step2 = false;
             return Page();
         }
         await Auth.SignInAsync(HttpContext, user.Id, isAdmin: false);
         if (user.Status == "pending")
-            TempData["Flash"] = "Waiting for Admin approval — read-only until approved.";
+            TempData["Flash"] = "pending";
         return SafeRedirect(ReturnUrl);
     }
 }
