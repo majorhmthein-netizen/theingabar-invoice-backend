@@ -14,11 +14,11 @@
 
 <div class="panel">
   <h2>Profile</h2>
-  <p><a class="btn" href="/User/ChangePin">Change PIN</a></p>
-  <p><a class="btn" href="/User/MyQr">My QR</a></p>
+  <p><a class="btn menu-btn" href="/User/ChangePin">Change PIN</a></p>
+  <p><a class="btn menu-btn" href="/User/MyQr">My QR</a></p>
   @if (Model.CanWrite)
   {
-    <p><a class="btn gold" href="/form">New invoice</a></p>
+    <p><a class="btn gold menu-btn" href="/form">New invoice</a></p>
   }
-  <p><a class="btn ghost" href="/logout">Log out</a></p>
+  <p><a class="btn ghost menu-btn" href="/logout">Log out</a></p>
 </div>
