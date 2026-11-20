@@ -5,7 +5,8 @@
  *   users            mechanics (max 5), approval status, KBZ template, QR
  *   meta             single-row shop template (id = 1)
  *   sessions         opaque server-side sessions (cookie holds only the id)
- *   invoice_no_seq   per-date invoice-number sequence (race-free numbering)
+ *   invoice_no_seq   global invoice-number sequence (plain running
+ *                      number from 60212; race-free numbering)
  *   rate_limits      DB-backed rate-limit / lockout counters
  *
  * All SQL is parameterized. Dates are stored as TEXT 'YYYY-MM-DD' (as the
@@ -78,6 +79,9 @@ public static class AppDb
                 address TEXT NOT NULL,
                 phone1 TEXT NOT NULL,
                 phone2 TEXT NOT NULL,
+                phone3 TEXT,
+                phone4 TEXT,
+                phone5 TEXT,
                 pay_name TEXT NOT NULL,
                 pay_num TEXT NOT NULL,
                 qr BYTEA,
@@ -86,6 +90,11 @@ public static class AppDb
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
             )
             """);
+        // Contact 3/4/5 (Han 2026-11-21): added after the meta table already
+        // existed, so the columns are added idempotently for live DBs.
+        await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone3 TEXT");
+        await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone4 TEXT");
+        await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone5 TEXT");
         await ExecAsync(conn, """
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
@@ -200,6 +209,16 @@ public static class AppDb
                 await seq.ExecuteNonQueryAsync();
                 Console.WriteLine("[backend] seeded Nissan Safari invoice 20261119-002");
             }
+        }
+
+        // Global invoice-number sequence (Han 2026-11-21: numbers start at
+        // 60212). The row holds the LAST used number, so the next invoice
+        // is 60212. Idempotent — never overwrites the live value.
+        await using (var gseq = new NpgsqlCommand(
+            "INSERT INTO invoice_no_seq (date_key, seq) VALUES ('global', 60211) " +
+            "ON CONFLICT (date_key) DO NOTHING", conn))
+        {
+            await gseq.ExecuteNonQueryAsync();
         }
     }
 
@@ -388,15 +407,15 @@ public static class AppDb
         "သိန်းကမ္ဘာ", "THEINGABAR AUTOMOTIVE GROUP",
         "ကားကြီး၊ ကားလတ်၊ မော်ဒယ်မြင့် အိမ်စီးကား အမျိုးမျိုး - အင်ဂျင်၊ AT/MT ဂီယာဘောက်၊ ဝါယာရိန်း, Air-Con, ဘရိတ်၊ အောက်ပိုင်း ပြုပြင်ရေးနှင့် OBD Diagnosis",
         "ပင်မှီလမ်း၊ ဇောတိ၊ အောင်ပန်းမြို့",
-        "09428188129", "09428332233", "Han Min Thein", "09428332233",
+        "09428188129", "09428332233", null, null, null, "Han Min Thein", "09428332233",
         "Thank you for choosing Theingabar Automotive Group.", false);
 
     public static async Task<MetaRow> GetMetaAsync()
     {
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
-            "SELECT shop, group_name, services, address, phone1, phone2, pay_name, pay_num, " +
-            "thanks, (qr IS NOT NULL) FROM meta WHERE id = 1", conn);
+            "SELECT shop, group_name, services, address, phone1, phone2, phone3, phone4, phone5, " +
+            "pay_name, pay_num, thanks, (qr IS NOT NULL) FROM meta WHERE id = 1", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         if (!await r.ReadAsync())
         {
@@ -406,7 +425,11 @@ public static class AppDb
             return DefaultMeta;
         }
         return new MetaRow(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3),
-            r.GetString(4), r.GetString(5), r.GetString(6), r.GetString(7), r.GetString(8), r.GetBoolean(9));
+            r.GetString(4), r.GetString(5),
+            r.IsDBNull(6) ? null : r.GetString(6),
+            r.IsDBNull(7) ? null : r.GetString(7),
+            r.IsDBNull(8) ? null : r.GetString(8),
+            r.GetString(9), r.GetString(10), r.GetString(11), r.GetBoolean(12));
     }
 
     public static async Task UpdateMetaAsync(MetaRow m, byte[]? qr, string? qrType)
@@ -414,7 +437,7 @@ public static class AppDb
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE meta SET shop=@shop, group_name=@group, services=@services, address=@addr, " +
-            "phone1=@p1, phone2=@p2, pay_name=@pn, pay_num=@pnum, " +
+            "phone1=@p1, phone2=@p2, phone3=@p3, phone4=@p4, phone5=@p5, pay_name=@pn, pay_num=@pnum, " +
             "qr = CASE WHEN @hasQr THEN @qr ELSE qr END, " +
             "qr_content_type = CASE WHEN @hasQr THEN @qt ELSE qr_content_type END, " +
             "thanks=@thanks, updated_at=now() WHERE id=1", conn);
@@ -424,6 +447,9 @@ public static class AppDb
         cmd.Parameters.AddWithValue("@addr", m.Address);
         cmd.Parameters.AddWithValue("@p1", m.Phone1);
         cmd.Parameters.AddWithValue("@p2", m.Phone2);
+        cmd.Parameters.AddWithValue("@p3", (object?)m.Phone3 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@p4", (object?)m.Phone4 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@p5", (object?)m.Phone5 ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@pn", m.PayName);
         cmd.Parameters.AddWithValue("@pnum", m.PayNum);
         cmd.Parameters.AddWithValue("@hasQr", qr is not null);
@@ -644,13 +670,14 @@ public static class AppDb
 
     /* ---------------- invoice numbering + totals ---------------- */
 
-    /// <summary>Assigns the next global invoice number for a date
-    /// (YYYYMMDD-NNN) inside a transaction and inserts the invoice,
-    /// returning the stored row. Retries once on a unique-index conflict.</summary>
+    /// <summary>Assigns the next global invoice number (plain running
+    /// number, starting at 60212 — Han 2026-11-21) inside a transaction
+    /// and inserts the invoice, returning the stored row. Retries once
+    /// on a unique-index conflict. The old per-date rows stay in
+    /// invoice_no_seq, unused; the seed invoice keeps 20261119-002.</summary>
     public static async Task<InvoiceRow> CreateInvoiceNumberedAsync(InvoiceInput inv)
     {
         if (DataSource is null) throw new InvalidOperationException("Postgres required for numbering");
-        var dateKey = inv.Date.Replace("-", "");
         for (var attempt = 0; attempt < 2; attempt++)
         {
             await using var conn = await DataSource.OpenConnectionAsync();
@@ -658,12 +685,11 @@ public static class AppDb
             try
             {
                 await using var seqCmd = new NpgsqlCommand(
-                    "INSERT INTO invoice_no_seq (date_key, seq) VALUES (@d, 1) " +
+                    "INSERT INTO invoice_no_seq (date_key, seq) VALUES ('global', 60212) " +
                     "ON CONFLICT (date_key) DO UPDATE SET seq = invoice_no_seq.seq + 1 RETURNING seq",
                     conn, tx);
-                seqCmd.Parameters.AddWithValue("@d", dateKey);
                 var seq = (int)(await seqCmd.ExecuteScalarAsync())!;
-                var no = $"{dateKey}-{seq:D3}";
+                var no = $"{seq}";
                 var withNo = inv with { No = no };
                 // Insert via the store's Postgres path inside the same transaction
                 // by using a raw insert here (same columns as PostgresStore).
@@ -698,23 +724,20 @@ public static class AppDb
         throw new DuplicateNoException();
     }
 
-    /// <summary>Next number that a NEW invoice for this date would get
-    /// (for the Preview page). Does not reserve the number.</summary>
+    /// <summary>Next number a NEW invoice would get (for the Preview page).
+    /// Numbering is date-independent now (plain running number from 60212),
+    /// so the date argument is ignored. Does not reserve the number.</summary>
     public static async Task<string> PeekNextNumberAsync(string dateIso)
     {
-        var dateKey = dateIso.Replace("-", "");
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
-            "SELECT COALESCE(MAX(seq), 0) FROM invoice_no_seq WHERE date_key = @d", conn);
-        cmd.Parameters.AddWithValue("@d", dateKey);
+            "SELECT COALESCE(MAX(seq), 60211) FROM invoice_no_seq WHERE date_key = 'global'", conn);
         var seq = (int)(await cmd.ExecuteScalarAsync())!;
         // Also consider numbers already stored without a seq row (legacy data).
         await using var maxCmd = new NpgsqlCommand(
-            "SELECT COALESCE(MAX(CAST(split_part(no, '-', 2) AS INTEGER)), 0) FROM invoices " +
-            "WHERE no LIKE @p", conn);
-        maxCmd.Parameters.AddWithValue("@p", dateKey + "-%");
+            "SELECT COALESCE(MAX(CAST(no AS INTEGER)), 0) FROM invoices WHERE no ~ '^[0-9]+$'", conn);
         var maxNo = (int)(await maxCmd.ExecuteScalarAsync())!;
-        return $"{dateKey}-{Math.Max(seq, maxNo) + 1:D3}";
+        return $"{Math.Max(seq, maxNo) + 1}";
     }
 
     static InvoiceRow ReadInvoiceRow(NpgsqlDataReader r)
@@ -762,8 +785,14 @@ public sealed record UserRow(
 
 public sealed record MetaRow(
     string Shop, string Group, string Services, string Address,
-    string Phone1, string Phone2, string PayName, string PayNum,
-    string Thanks, bool HasQr);
+    string Phone1, string Phone2, string? Phone3, string? Phone4, string? Phone5,
+    string PayName, string PayNum, string Thanks, bool HasQr)
+{
+    /// <summary>All set contact numbers, joined with ", " (empty ones skipped).</summary>
+    public string PhonesDisplay => string.Join(", ",
+        new[] { Phone1, Phone2, Phone3, Phone4, Phone5 }
+            .Where(s => !string.IsNullOrWhiteSpace(s)));
+}
 
 public sealed record SessionRow(
     string Id, int UserId, bool IsAdmin, DateTime CreatedAt, DateTime ExpiresAt,

@@ -315,6 +315,7 @@ app.MapGet("/invoice/{id:long}.pdf", async (long id, HttpContext ctx) =>
     var pdf = await PdfService.RenderAsync(row, me.User);
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "application/pdf";
+    ctx.Response.ContentLength = pdf.Length;
     ctx.Response.Headers.ContentDisposition =
         $"attachment; filename=\"invoice-{row.No ?? row.Id.ToString()}.pdf\"";
     await ctx.Response.Body.WriteAsync(pdf);
@@ -330,6 +331,7 @@ app.MapGet("/invoice/{id:long}.png", async (long id, HttpContext ctx) =>
     if (png is null) { ctx.Response.StatusCode = 503; return; }
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "image/png";
+    ctx.Response.ContentLength = png.Length;
     ctx.Response.Headers.ContentDisposition =
         $"attachment; filename=\"invoice-{row.No ?? row.Id.ToString()}.png\"";
     await ctx.Response.Body.WriteAsync(png);
