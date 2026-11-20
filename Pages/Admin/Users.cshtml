@@ -3,9 +3,10 @@
 @{
     ViewData["Title"] = "All users";
 }
-<div class="panel">
+<div class="panel panel-fill">
   <h2>All users</h2>
   <p class="hint">Max 5 mechanics. Approve, reject, suspend, revoke sessions, or reset a locked account's login counters.</p>
+  <div class="scroll">
   @foreach (var u in Model.Users)
   {
     <div class="log-row">
@@ -47,4 +48,5 @@
       </span>
     </div>
   }
+  </div>
 </div>

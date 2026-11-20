@@ -3,9 +3,10 @@
 @{
     ViewData["Title"] = "Shop metadata";
 }
-<div class="panel">
+<div class="panel panel-fill">
   <h2>Shop metadata</h2>
   <p class="hint">Admin only. These values appear on every invoice. Leave the QR empty to keep the current one.</p>
+  <div class="scroll">
   <form method="post" enctype="multipart/form-data">
     <label class="fld"><span>Shop name</span><input name="Shop" value="@Model.Shop" required maxlength="100" /></label>
     <label class="fld"><span>Group line</span><input name="Group" value="@Model.Group" required maxlength="200" /></label>
@@ -23,4 +24,5 @@
     }
     <button class="btn" type="submit">Save metadata</button>
   </form>
+  </div>
 </div>

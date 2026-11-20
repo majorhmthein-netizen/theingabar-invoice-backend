@@ -29,8 +29,9 @@ else
     <p><a class="btn" href="/admin/meta">Shop metadata</a> <a class="btn" href="/admin/users">All users</a> <a class="btn" href="/admin/log">Invoice history</a></p>
   </div>
 
-  <div class="panel">
+  <div class="panel panel-fill">
     <h2>Pending users</h2>
+    <div class="scroll">
     @if (Model.Pending.Count == 0)
     {
       <p class="hint">No users waiting for approval.</p>
@@ -51,10 +52,12 @@ else
         </span>
       </div>
     }
+    </div>
   </div>
 
-  <div class="panel">
+  <div class="panel panel-fill">
     <h2>Users</h2>
+    <div class="scroll">
     @foreach (var u in Model.Users)
     {
       <div class="log-row">
@@ -81,5 +84,6 @@ else
         </span>
       </div>
     }
+    </div>
   </div>
 }
