@@ -13,9 +13,13 @@ body {
   color: #14202e;
   overflow: hidden; /* fixed screen: panels scroll, the page does not */
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; /* app mood: touching text never selects it */
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 a { color: #0b5394; }
 button, input, select, textarea { font: inherit; }
+input, textarea { -webkit-user-select: text; user-select: text; } /* form fields stay editable/selectable */
 
 /* --- toolbar + tab bar (fixed) --- */
 .toolbar {
@@ -31,16 +35,29 @@ button, input, select, textarea { font: inherit; }
 .toolbar-sp { flex: 1; }
 .tabbar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-  display: flex; gap: 4px;
+  display: flex; justify-content: center;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   background: #fff; border-top: 1px solid #dfe5ec;
 }
-.tab-btn {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  min-height: 48px; border-radius: 8px; text-decoration: none;
-  color: #24344a; background: #eef2f6; font-weight: 700;
+.invoice-fab {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 12px 30px; border-radius: 999px; text-decoration: none;
+  color: #fff; background: #0b5394; font-weight: 800; font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(11, 83, 148, .35);
+  transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
 }
-.tab-btn:hover { background: #dfe8f2; }
+.invoice-fab:hover { background: #0a467e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 83, 148, .4); }
+.invoice-fab:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(11, 83, 148, .3); }
+
+/* double-back-to-exit toast */
+.exit-toast {
+  position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%) translateY(8px);
+  z-index: 30; background: #14202e; color: #fff; font-weight: 700; font-size: .9rem;
+  padding: 10px 18px; border-radius: 999px; opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.exit-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 .wrap {
   position: fixed; top: 52px; bottom: 60px; left: 0; right: 0;
