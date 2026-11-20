@@ -46,6 +46,7 @@ public static class PdfService
             if (_fontsRegistered) return;
             FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSansMyanmar-Regular.ttf")));
             FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSansMyanmar-Bold.ttf")));
+            FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSansMyanmar-Light.ttf")));
             FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSerifMyanmar-Bold.ttf")));
             FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSerifMyanmar-Black.ttf")));
             FontManager.RegisterFont(File.OpenRead(ResolveFont("Archivo.ttf")));
@@ -57,7 +58,13 @@ public static class PdfService
     static TextStyle Myanmar(float size, int weight, string color) =>
         TextStyle.Default.FontFamily("Noto Sans Myanmar").FontSize(size).FontColor(color)
             .Weight(weight switch { >= 800 => FontWeight.Black, >= 700 => FontWeight.Bold,
-                >= 600 => FontWeight.SemiBold, _ => FontWeight.Normal });
+                >= 600 => FontWeight.SemiBold, 300 => FontWeight.Light, _ => FontWeight.Normal });
+
+    // The Light TTF's typographic family (name ID 16) is "Noto Sans
+    // Myanmar" with usWeightClass 300, so Skia registers it as the Light
+    // weight of that family — Weight(Light) selects it. Its legacy family
+    // name "Noto Sans Myanmar Light" does NOT match (verified 2026-11-21:
+    // FontFamily("Noto Sans Myanmar Light") silently fell back to Regular).
 
     static TextStyle Latin(float size, int weight, string color) =>
         TextStyle.Default.FontFamily("Archivo").FontSize(size).FontColor(color)
@@ -110,8 +117,8 @@ public static class PdfService
                     col.Item().AlignCenter().Column(h =>
                     {
                         h.Item().AlignCenter().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
-                        h.Item().AlignCenter().Text("INVOICE").Style(Latin(14.25f, 800, "#14202e").LetterSpacing(0.55f));
-                        h.Item().AlignCenter().Text(meta.Group).Style(Latin(7.9f, 700, "#b98a1c").LetterSpacing(0.28f));
+                        h.Item().AlignCenter().Text("INVOICE").Style(Latin(14.25f, 800, "#0b5394").LetterSpacing(0.55f));
+                        h.Item().AlignCenter().Text(meta.Group).Style(Latin(7.9f, 700, "#D4AF37").LetterSpacing(0.28f));
                         h.Item().PaddingTop(7).AlignCenter().Text(meta.Services)
                             .Style(Myanmar(10.1f, 700, "#24344a")).LineHeight(1.75f);
                         h.Item().PaddingTop(4).Column(a =>
@@ -177,9 +184,9 @@ public static class PdfService
                                 .Text((i + 1).ToString()).Style(Myanmar(10.9f, 400, "#7b8a99"));
                             t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6)
                                 .Text(string.IsNullOrWhiteSpace(it.Desc) ? "—" : it.Desc)
-                                .Style(Myanmar(10.9f, 400, "#14202e")).LineHeight(1.55f);
+                                .Style(Myanmar(10.9f, 300, "#000000")).LineHeight(1.55f);
                             t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6)
-                                .AlignRight().Text(Paper.Fmt(it.Amount)).Style(Myanmar(10.9f, 600, "#14202e"));
+                                .AlignRight().Text(Paper.Fmt(it.Amount)).Style(Myanmar(10.9f, 700, "#000000"));
                         }
                         t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8)
                             .Text("");
