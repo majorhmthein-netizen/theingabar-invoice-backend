@@ -124,7 +124,7 @@ public static class PdfService
                             a.Item().AlignCenter().Text(t =>
                             {
                                 t.Span("Contact – ").Style(Myanmar(9.75f, 800, "#24344a"));
-                                t.Span(meta.Phone1 + ", " + meta.Phone2).Style(Myanmar(9.75f, 600, "#24344a"));
+                                t.Span(meta.PhonesDisplay).Style(Myanmar(9.75f, 600, "#24344a"));
                             });
                         });
                     });
