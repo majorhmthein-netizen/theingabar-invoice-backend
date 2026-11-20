@@ -4,23 +4,23 @@
     ViewData["Title"] = "Invoice " + (Model.Row?.No ?? "");
 }
 @section Styles {
-    <link rel="stylesheet" href="/css/invoice.css" />
+  <link rel="stylesheet" href="/css/invoice.css" />
 }
 <div class="panel no-print">
-    <div class="row">
-        <a class="btn ghost" href="/log">Back to log</a>
-        <span class="sp"></span>
-        <a class="btn" href="/invoice/@(Model.Row!.Id).pdf?token=@Model.DownloadToken">PDF</a>
-        <a class="btn" href="/invoice/@(Model.Row!.Id).png?token=@Model.DownloadToken">PNG</a>
-        @if (Model.Me is not null && Model.Me.CanWrite)
-        {
-            <a class="btn gold" href="/form?id=@Model.Row!.Id">Edit</a>
-            <form method="post" asp-page-handler="Delete" class="inline-form" style="display:inline">
-                <button class="btn danger" type="submit">Delete</button>
-            </form>
-        }
-    </div>
-    <p class="hint">To print: use your browser's Print (menu or Ctrl+P). The paper prints exactly as shown.</p>
+  <div class="row">
+    <a class="btn ghost" href="/log">Back to log</a>
+    <span class="sp"></span>
+    @if (Model.Me is not null && Model.Me.CanWrite)
+    {
+      <a class="btn" href="/invoice/@(Model.Row!.Id).pdf">PDF</a>
+      <a class="btn" href="/invoice/@(Model.Row!.Id).png">PNG</a>
+      <a class="btn gold" href="/form?id=@Model.Row!.Id">Edit</a>
+      <form method="post" asp-page-handler="Delete" class="inline-form" style="display:inline">
+        <button class="btn danger" type="submit">Delete</button>
+      </form>
+    }
+  </div>
+  <p class="hint">To print: use your browser's Print (menu or Ctrl+P). The paper prints exactly as shown.</p>
 </div>
 
 <partial name="Shared/_InvoicePaper" model="Model.PaperModel" />

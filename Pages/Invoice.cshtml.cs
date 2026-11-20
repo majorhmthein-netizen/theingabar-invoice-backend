@@ -7,7 +7,6 @@ public class InvoiceModel : AppPageModel
 
     public InvoiceRow? Row { get; private set; }
     public InvoicePaperModel PaperModel { get; private set; } = null!;
-    public string DownloadToken { get; private set; } = "";
 
     public async Task<IActionResult> OnGetAsync(long id)
     {
@@ -19,7 +18,6 @@ public class InvoiceModel : AppPageModel
         if (Row.UserId is not null)
             owner = await AppDb.FindUserByLocalIdAsync(Row.UserId);
         PaperModel = Paper.PaperFor(Row, owner, Meta!);
-        DownloadToken = InvoiceDownloadToken.Create(id);
         return Page();
     }
 
