@@ -5,46 +5,25 @@
 }
 <div class="panel">
   <h2>Log in</h2>
-  <p class="hint">Mechanics log in with their phone and a one-time code. You stay logged in until you tap Log out.</p>
-  @if (!Model.Step2)
-  {
-    <form method="post" asp-page-handler="Request" id="request-form">
-      <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
-      <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
-      @if (Model.LockoutSeconds > 0)
-      {
-        <p class="field-error" id="lockout-error">Too many attempts — try again in <span id="lockout-countdown" data-seconds="@Model.LockoutSeconds">@Model.LockoutText</span>.</p>
-      }
-      else if (Model.Error is not null)
-      {
-        <p class="field-error">@Model.Error</p>
-      }
-      <button class="btn" type="submit" id="send-code-btn" @(Model.LockoutSeconds > 0 ? "disabled" : "")>Log in</button>
-      <p class="hint" id="sending-status" hidden>Code is sending via sms <span id="sending-countdown">45s</span></p>
-    </form>
-    <script src="/js/login-loading.js" defer></script>
+  <p class="hint">Mechanics log in with their phone and their 4-digit PIN. You stay logged in until you tap Log out.</p>
+  <form method="post" id="request-form">
+    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+    <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
+    <label class="fld"><span>4-digit PIN</span><input name="Pin" type="password" required inputmode="numeric" autocomplete="current-password" maxlength="4" placeholder="••••" /></label>
     @if (Model.LockoutSeconds > 0)
     {
-      <script src="/js/countdown.js" defer></script>
+      <p class="field-error" id="lockout-error">Too many attempts — try again in <span id="lockout-countdown" data-seconds="@Model.LockoutSeconds">@Model.LockoutText</span>.</p>
     }
-  }
-  else
+    else if (Model.Error is not null)
+    {
+      <p class="field-error">@Model.Error</p>
+    }
+    <button class="btn" type="submit" id="login-btn" @(Model.LockoutSeconds > 0 ? "disabled" : "")>Log in</button>
+  </form>
+  <script src="/js/login-loading.js" defer></script>
+  @if (Model.LockoutSeconds > 0)
   {
-    <form method="post" asp-page-handler="Verify">
-      <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
-      <p class="hint">Code sent to <b>@Model.Phone</b> — valid 5 minutes.</p>
-      <label class="fld"><span>6-digit code</span><input name="Code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" /></label>
-      @if (Model.Error is not null)
-      {
-        <p class="field-error">@Model.Error</p>
-      }
-      <button class="btn" type="submit">Verify &amp; log in</button>
-    </form>
-    <form method="post" asp-page-handler="Request">
-      <input type="hidden" name="Phone" value="@Model.Phone" />
-      <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
-      <button class="btn ghost" type="submit">Send a new code</button>
-    </form>
+    <script src="/js/countdown.js" defer></script>
   }
   <p class="hint">No account yet? <a href="/signup">Sign up</a> — approval is needed before you can issue invoices.</p>
 </div>

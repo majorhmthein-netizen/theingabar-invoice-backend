@@ -25,7 +25,7 @@ public class SignupModel : AppPageModel
             return Page();
         }
         await AppDb.CreateUserAsync(Username, Auth.NormalizePhone(Phone));
-        Flash("Signed up — pending.");
+        Flash("Signed up — pending. Your PIN is 1111.");
         return RedirectToPage("/Login", new { phone = Auth.NormalizePhone(Phone) });
     }
 }

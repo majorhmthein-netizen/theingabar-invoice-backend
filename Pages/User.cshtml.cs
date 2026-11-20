@@ -7,6 +7,8 @@ public class UserModel : AppPageModel
 
     [BindProperty] public string? KbzName { get; set; }
     [BindProperty] public string? KbzNumber { get; set; }
+    [BindProperty] public string? CurrentPin { get; set; }
+    [BindProperty] public string? NewPin { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -42,6 +44,29 @@ public class UserModel : AppPageModel
         }
         await AppDb.UpdateUserTemplateAsync(User.Id, KbzName?.Trim(), KbzNumber?.Trim(), qr, qrType);
         Flash("KBZ Pay template saved.");
+        return RedirectToPage("/User");
+    }
+
+    /// <summary>Change the login PIN. Other devices logged in as this user
+    /// are logged out; the current session stays.</summary>
+    public async Task<IActionResult> OnPostChangePinAsync()
+    {
+        if (await NeedLoginAsync() is { } redirect) return redirect;
+        User = Me!.User;
+        var err = Auth.ValidatePin(CurrentPin) ?? Auth.ValidatePin(NewPin);
+        if (err is not null)
+        {
+            FlashError(err);
+            return RedirectToPage("/User");
+        }
+        if (!Auth.VerifyPin(CurrentPin!.Trim(), User.PasswordHash))
+        {
+            FlashError("Wrong current PIN.");
+            return RedirectToPage("/User");
+        }
+        await AppDb.SetUserPinHashAsync(User.Id, Auth.HashPin(NewPin!.Trim()));
+        await AppDb.RevokeOtherSessionsAsync(User.Id, Me.Session.Id);
+        Flash("PIN changed.");
         return RedirectToPage("/User");
     }
 }
