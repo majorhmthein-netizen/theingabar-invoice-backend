@@ -7,7 +7,6 @@ public class UserModel : AppPageModel
 
     [BindProperty] public string? KbzName { get; set; }
     [BindProperty] public string? KbzNumber { get; set; }
-    [BindProperty] public string? NewPassword { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -43,20 +42,6 @@ public class UserModel : AppPageModel
         }
         await AppDb.UpdateUserTemplateAsync(User.Id, KbzName?.Trim(), KbzNumber?.Trim(), qr, qrType);
         Flash("KBZ Pay template saved.");
-        return RedirectToPage("/User");
-    }
-
-    public async Task<IActionResult> OnPostPasswordAsync()
-    {
-        if (await NeedLoginAsync() is { } redirect) return redirect;
-        var err = Auth.ValidatePassword(NewPassword);
-        if (err is not null)
-        {
-            FlashError(err);
-            return RedirectToPage("/User");
-        }
-        await AppDb.SetUserPasswordAsync(Me!.User.Id, Auth.HashPassword(NewPassword!));
-        Flash("Password changed.");
         return RedirectToPage("/User");
     }
 }

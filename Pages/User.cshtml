@@ -30,14 +30,6 @@
 </div>
 
 <div class="panel">
-  <h2>Change password</h2>
-  <form method="post" asp-page-handler="Password">
-    <label class="fld"><span>New password (at least 6 characters)</span><input name="NewPassword" type="password" required minlength="6" autocomplete="new-password" /></label>
-    <button class="btn" type="submit">Change password</button>
-  </form>
-</div>
-
-<div class="panel">
   <h2>My invoices</h2>
   <p>
   @if (Model.CanWrite)

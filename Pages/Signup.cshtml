@@ -5,11 +5,10 @@
 }
 <div class="panel">
   <h2>Sign up</h2>
-  <p class="hint">Username (3–20 characters) + phone (09…, 9–11 digits) + password (at least 6 characters). The Admin approves new mechanics before they can write invoices.</p>
+  <p class="hint">Username (3–20 characters) + phone (09…, 9–11 digits). No password — you log in with a one-time code sent to your phone. The Admin approves new mechanics before they can write invoices.</p>
   <form method="post">
     <label class="fld"><span>Username</span><input name="Username" value="@Model.Username" required minlength="3" maxlength="20" autocomplete="username" /></label>
     <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
-    <label class="fld"><span>Password</span><input name="Password" type="password" required minlength="6" autocomplete="new-password" /></label>
     @if (Model.Error is not null)
     {
       <p class="field-error">@Model.Error</p>

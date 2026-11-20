@@ -5,15 +5,36 @@
 }
 <div class="panel">
   <h2>Log in</h2>
-  <p class="hint">Mechanics log in with their username and password. Log in again on every open — no session is kept.</p>
-  <form method="post">
-    <label class="fld"><span>Username</span><input name="Username" value="@Model.Username" required maxlength="20" autocomplete="username" /></label>
-    <label class="fld"><span>Password</span><input name="Password" type="password" required autocomplete="current-password" /></label>
-    @if (Model.Error is not null)
-    {
-      <p class="field-error">@Model.Error</p>
-    }
-    <button class="btn" type="submit">Log in</button>
-  </form>
+  <p class="hint">Mechanics log in with their phone and a one-time code. You stay logged in until you tap Log out.</p>
+  @if (!Model.Step2)
+  {
+    <form method="post" asp-page-handler="Request">
+      <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+      <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
+      @if (Model.Error is not null)
+      {
+        <p class="field-error">@Model.Error</p>
+      }
+      <button class="btn" type="submit">Send code</button>
+    </form>
+  }
+  else
+  {
+    <form method="post" asp-page-handler="Verify">
+      <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+      <p class="hint">Code sent to <b>@Model.Phone</b> — valid 5 minutes.</p>
+      <label class="fld"><span>6-digit code</span><input name="Code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" /></label>
+      @if (Model.Error is not null)
+      {
+        <p class="field-error">@Model.Error</p>
+      }
+      <button class="btn" type="submit">Verify &amp; log in</button>
+    </form>
+    <form method="post" asp-page-handler="Request">
+      <input type="hidden" name="Phone" value="@Model.Phone" />
+      <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+      <button class="btn ghost" type="submit">Send a new code</button>
+    </form>
+  }
   <p class="hint">No account yet? <a href="/signup">Sign up</a> — the Admin approves new mechanics.</p>
 </div>

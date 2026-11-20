@@ -4,7 +4,6 @@ public class SignupModel : AppPageModel
 {
     [BindProperty] public string Username { get; set; } = "";
     [BindProperty] public string Phone { get; set; } = "";
-    [BindProperty] public string Password { get; set; } = "";
     public string? Error { get; private set; }
 
     public async Task OnGetAsync() => await LoadCommonAsync();
@@ -13,7 +12,7 @@ public class SignupModel : AppPageModel
     {
         await LoadCommonAsync();
         if (NeedDb(out var redirect)) return redirect!;
-        var err = Auth.ValidateUsername(Username) ?? Auth.ValidatePhone(Phone) ?? Auth.ValidatePassword(Password);
+        var err = Auth.ValidateUsername(Username) ?? Auth.ValidatePhone(Phone);
         if (err is not null) { Error = err; return Page(); }
         if (await AppDb.CountUsersAsync() >= 5)
         {
@@ -25,8 +24,8 @@ public class SignupModel : AppPageModel
             Error = "That username is already taken.";
             return Page();
         }
-        await AppDb.CreateUserAsync(Username, Auth.NormalizePhone(Phone), Auth.HashPassword(Password));
-        Flash("Signed up — waiting for Admin approval. You can log in once approved.");
+        await AppDb.CreateUserAsync(Username, Auth.NormalizePhone(Phone));
+        Flash("Signed up — waiting for Admin approval. You can log in with OTP now; issuing invoices unlocks after approval.");
         return RedirectToPage("/Login");
     }
 }
