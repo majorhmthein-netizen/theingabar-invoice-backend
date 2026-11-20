@@ -5,22 +5,45 @@
 }
 @section Styles {
   <link rel="stylesheet" href="/css/invoice.css" />
+  <link rel="stylesheet" href="/css/export.css" />
+}
+@section Scripts {
+  <script src="/js/export.js"></script>
 }
 <div class="panel no-print">
   <div class="row">
     <span class="sp"></span>
     @if (Model.Me is not null && Model.Me.CanWrite)
     {
-      <a class="btn" href="/invoice/@(Model.Row!.Id).pdf">PDF</a>
-      <a class="btn" href="/invoice/@(Model.Row!.Id).png">PNG</a>
+      <button class="btn" type="button" id="export-share">Share</button>
+      <button class="btn gold" type="button" id="export-save">Save to device</button>
+      <button class="btn ghost" type="button" id="export-print">Print</button>
       <a class="btn gold" href="/form?id=@Model.Row!.Id">Edit</a>
       <form method="post" asp-page-handler="Delete" class="inline-form" style="display:inline">
         <button class="btn danger" type="submit">Delete</button>
       </form>
     }
   </div>
-  <p class="hint">To print: use your browser's Print (menu or Ctrl+P). The paper prints exactly as shown.</p>
 </div>
+
+@if (Model.Me is not null && Model.Me.CanWrite)
+{
+  <div class="panel no-print" id="export-card" data-png="/invoice/@(Model.Row!.Id).png" data-pdf="/invoice/@(Model.Row!.Id).pdf" data-no="@Model.Row!.No">
+    <div class="export-card">
+      <img class="export-thumb" id="export-thumb" src="/invoice/@(Model.Row!.Id).png" alt="Invoice preview" />
+      <div class="export-thumb-pdf" id="export-thumb-pdf" hidden>PDF</div>
+      <div>
+        <div class="export-name" id="export-name">invoice-@(Model.Row!.No).png</div>
+        <div class="row">
+          <button type="button" class="fmt-pill active" data-fmt="png">PNG</button>
+          <button type="button" class="fmt-pill" data-fmt="pdf">PDF</button>
+        </div>
+        <p class="hint">Share sends the file to Viber, Telegram and other apps.</p>
+      </div>
+    </div>
+  </div>
+  <div class="export-toast" id="export-toast" role="status"></div>
+}
 
 <div class="scroll">
 <partial name="Shared/_InvoicePaper" model="Model.PaperModel" />
