@@ -1,0 +1,46 @@
+@page
+@model UserModel
+@{
+    ViewData["Title"] = "User";
+}
+<div class="panel">
+  <h2>@Model.User!.Username</h2>
+  <p>Phone: @Model.User.Phone<br />Status: <b>@Model.User.Status</b>@(Model.User.IsAdmin ? " · Admin" : "")</p>
+  @if (!Model.CanWrite)
+  {
+    <p class="flash">Waiting for Admin approval — read-only until approved.</p>
+  }
+</div>
+
+<div class="panel">
+  <h2>KBZ Pay template</h2>
+  <p class="hint">Your name, number and QR shown on the invoices you issue. Leave the QR empty to keep the current one.</p>
+  <form method="post" asp-page-handler="Template" enctype="multipart/form-data">
+    <label class="fld"><span>KBZ Pay name</span><input name="KbzName" value="@Model.KbzName" maxlength="128" /></label>
+    <label class="fld"><span>KBZ Pay number</span><input name="KbzNumber" value="@Model.KbzNumber" maxlength="20" inputmode="tel" /></label>
+    <label class="fld"><span>QR image (JPG/PNG, max 2 MB)</span><input name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+    @if (Model.User.HasQr)
+    {
+      <p><img src="/qr/user/@Model.User.Id" alt="Current QR" style="width:118px;height:118px" /></p>
+    }
+    <button class="btn" type="submit">Save template</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Change password</h2>
+  <form method="post" asp-page-handler="Password">
+    <label class="fld"><span>New password (at least 6 characters)</span><input name="NewPassword" type="password" required minlength="6" autocomplete="new-password" /></label>
+    <button class="btn" type="submit">Change password</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>My invoices</h2>
+  <p><a class="btn" href="/log?user=@Model.User.LocalId">My log</a>
+  @if (Model.CanWrite)
+  {
+    <a class="btn gold" href="/form">New invoice</a>
+  }
+  </p>
+</div>

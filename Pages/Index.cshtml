@@ -1,0 +1,57 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+<div class="panel">
+  <h2>@Model.Meta?.Shop</h2>
+  <p class="hint">@Model.Meta?.Group<br />@Model.Meta?.Services<br />@Model.Meta?.Address — @Model.Meta?.Phone1, @Model.Meta?.Phone2</p>
+</div>
+
+<div class="panel">
+  <h2>Mechanics</h2>
+  @if (Model.Users.Count == 0)
+  {
+    <p class="hint">No mechanics yet.</p>
+  }
+  @foreach (var u in Model.Users)
+  {
+    <a class="user-chip" href="/log?user=@u.LocalId"><span class="avatar">@Paper_Initials(u.Username)</span>@u.Username</a>
+  }
+  <p class="hint">Tap a mechanic to view their invoice log (read-only).</p>
+</div>
+
+<div class="panel">
+  <h2>Income</h2>
+  <div class="totals-line"><span>This week (@Paper.FmtDate(Model.WeekFrom) – @Paper.FmtDate(Model.WeekTo))</span><span>@Paper.Fmt(Model.WeekTotal) MMK</span></div>
+  <div class="totals-line"><span>This month</span><span>@Paper.Fmt(Model.MonthTotal) MMK</span></div>
+</div>
+
+<div class="panel">
+  <h2>Recent invoices</h2>
+  @if (Model.Recent.Count == 0)
+  {
+    <p class="hint">No invoices yet.</p>
+  }
+  @foreach (var inv in Model.Recent)
+  {
+    <div class="log-row">
+      <span class="log-no">@inv.No</span>
+      <span>@Paper.FmtDate(inv.Date)</span>
+      <span>@inv.Customer</span>
+      <span class="amt">@Paper.Fmt(inv.Total) MMK</span>
+      <a href="/invoice/@inv.Id">View</a>
+    </div>
+  }
+  <p><a href="/log">Full log</a></p>
+</div>
+
+@functions {
+    static string Paper_Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..Math.Min(1, parts[0].Length)];
+        return string.Concat(parts[0][..1], parts[1][..1]);
+    }
+}

@@ -1,0 +1,40 @@
+@page
+@model FormModel
+@{
+    ViewData["Title"] = Model.EditId is null ? "New invoice" : "Edit invoice";
+}
+<div class="panel">
+  <h2>@(Model.EditId is null ? "New invoice" : "Edit invoice")</h2>
+  <p class="hint">Fill in the items, then Preview to see the invoice paper, or Save to issue it. Totals are computed on the server when you preview or save.</p>
+  <form method="post">
+    <label class="fld"><span>Date</span><input name="Date" type="date" value="@Model.Date" required /></label>
+    <label class="fld"><span>Customer / Vehicle</span><input name="Customer" value="@Model.Customer" required maxlength="200" /></label>
+    <input type="hidden" name="RowCount" value="@Model.RowCount" />
+    <input type="hidden" name="EditId" value="@Model.EditId" />
+    <table class="items">
+      <thead><tr><th style="width:28px">No.</th><th>Description</th><th style="width:110px">Amount (MMK)</th><th style="width:40px"></th></tr></thead>
+      <tbody>
+      @for (var i = 0; i < Model.RowCount; i++)
+      {
+        var it = i < Model.Items.Count ? Model.Items[i] : null;
+        <tr>
+          <td>@(i + 1)</td>
+          <td><input name="desc@(i)" value="@(it?.Desc ?? "")" maxlength="200" /></td>
+          <td><input name="amount@(i)" value="@(it is null ? "" : it.Amount.ToString())" inputmode="numeric" /></td>
+          <td><button class="mini-btn ghost" type="submit" asp-page-handler="RemoveRow" asp-route-row="@i" title="Remove row">✕</button></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+    @if (Model.Error is not null)
+    {
+      <p class="field-error">@Model.Error</p>
+    }
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" type="submit" asp-page-handler="AddRow">+ Add row</button>
+      <span class="sp"></span>
+      <button class="btn" type="submit" formaction="/preview">Preview</button>
+      <button class="btn gold" type="submit" asp-page-handler="Save">Save</button>
+    </div>
+  </form>
+</div>

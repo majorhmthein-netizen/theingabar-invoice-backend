@@ -1,0 +1,40 @@
+@page
+@model PreviewModel
+@{
+    ViewData["Title"] = "Preview";
+}
+@section Styles {
+  <link rel="stylesheet" href="/css/invoice.css" />
+}
+<div class="panel no-print">
+  <h2>Preview — not saved yet</h2>
+  <p class="hint">Check the paper below, then Save to issue it, or go back to edit.</p>
+  <form method="post" action="/form?handler=Save" class="row">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Date" value="@Model.Date" />
+    <input type="hidden" name="Customer" value="@Model.Customer" />
+    <input type="hidden" name="RowCount" value="@Model.RowCount" />
+    <input type="hidden" name="EditId" value="@Model.EditId" />
+    @for (var i = 0; i < Model.Items.Count; i++)
+    {
+      <input type="hidden" name="desc@(i)" value="@Model.Items[i].Desc" />
+      <input type="hidden" name="amount@(i)" value="@Model.Items[i].Amount" />
+    }
+    <button class="btn gold" type="submit">Save invoice</button>
+  </form>
+  <form method="post" action="/form?handler=Back" class="row" style="margin-top:8px">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Date" value="@Model.Date" />
+    <input type="hidden" name="Customer" value="@Model.Customer" />
+    <input type="hidden" name="RowCount" value="@Model.RowCount" />
+    <input type="hidden" name="EditId" value="@Model.EditId" />
+    @for (var i = 0; i < Model.Items.Count; i++)
+    {
+      <input type="hidden" name="desc@(i)" value="@Model.Items[i].Desc" />
+      <input type="hidden" name="amount@(i)" value="@Model.Items[i].Amount" />
+    }
+    <button class="btn ghost" type="submit">Back to form</button>
+  </form>
+</div>
+
+<partial name="Shared/_InvoicePaper" model="Model.PaperModel" />

@@ -1,0 +1,72 @@
+@* Theingabar Invoice — HTML-only layout.
+   No custom JavaScript in any page: the only script is the cache-only
+   service-worker registration (/js/sw-register.js, no app logic).
+   Admin has no link anywhere in this layout (Q6: unlisted /admin URL). *@
+@{
+    var meta = ViewData["Meta"] as MetaRow;
+    var me = ViewData["Me"] as SessionUser;
+    var shop = meta?.Shop ?? "သိန်းကမ္ဘာ";
+    var title = ViewData["Title"] as string;
+}
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b5394" />
+<title>@(title is null ? shop : title + " — " + shop)</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="stylesheet" href="/css/fonts.css" />
+<link rel="stylesheet" href="/css/tailwind.css" />
+<link rel="stylesheet" href="/css/app.css" />
+@await RenderSectionAsync("Styles", required: false)
+</head>
+<body data-auth="@(me is null ? "logged-out" : "logged-in")">
+<header class="toolbar">
+  <a class="t-title" href="/"><span class="dot" aria-hidden="true"></span>@shop</a>
+  <span class="toolbar-sp"></span>
+  @if (me is null)
+  {
+    <a class="mini-btn" href="/login">Log in</a>
+    <a class="mini-btn" href="/signup">Sign up</a>
+  }
+  else
+  {
+    <a class="mini-btn" href="/user">@me.User.Username</a>
+    <form method="post" action="/logout" class="inline-form">@Html.AntiForgeryToken()<button class="mini-btn" type="submit">Log out</button></form>
+  }
+</header>
+
+<main class="wrap">
+  @if (TempData["Flash"] is string flash && flash.Length > 0)
+  {
+    <p class="flash" role="status">@flash</p>
+  }
+  @if (TempData["FlashError"] is string flashErr && flashErr.Length > 0)
+  {
+    <p class="flash flash-err" role="alert">@flashErr</p>
+  }
+  @RenderBody()
+</main>
+
+<nav class="tabbar" aria-label="Pages">
+  <a class="tab-btn" href="/">Home</a>
+  <a class="tab-btn" href="/log">Log</a>
+  @if (me is not null && me.CanWrite)
+  {
+    <a class="tab-btn" href="/form">New invoice</a>
+    <a class="tab-btn" href="/user">User</a>
+  }
+  else if (me is not null)
+  {
+    <a class="tab-btn" href="/user">User</a>
+  }
+  else
+  {
+    <a class="tab-btn" href="/login">Log in</a>
+  }
+</nav>
+
+<script src="/js/sw-register.js"></script>
+</body>
+</html>
