@@ -149,7 +149,7 @@ if (googleConfigured)
         });
 }
 
-var app = builder.Build();
+var app = builder.Build(); InvoiceDownloadToken.Init(app.Services.GetRequiredService<IDataProtectionProvider>());
 
 /* --- Security headers on every response (plan §7.1 #9) --- */
 app.Use(async (ctx, next) =>
@@ -283,16 +283,16 @@ app.MapGet("/qr/user/{id:int}", async (int id, HttpResponse res) =>
 });
 
 /* ------------------------------------------------------------------ */
-/* Invoice PDF / PNG exports (approved users only)                      */
+/* Invoice PDF / PNG exports (approved users or a signed download token)                      */
 /* ------------------------------------------------------------------ */
 
 app.MapGet("/invoice/{id:long}.pdf", async (long id, HttpContext ctx) =>
 {
     var me = await Auth.CurrentUserAsync(ctx);
-    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
+    if ((me is null || !me.CanWrite) && !InvoiceDownloadToken.IsValid(ctx.Request.Query["token"], id)) { ctx.Response.StatusCode = 403; return; }
     var row = (await store.ListAsync()).FirstOrDefault(r => r.Id == id);
     if (row is null) { ctx.Response.StatusCode = 404; return; }
-    var pdf = await PdfService.RenderAsync(row, me.User);
+    var pdf = await PdfService.RenderAsync(row, me?.User);
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "application/pdf";
     ctx.Response.Headers.ContentDisposition =
@@ -303,10 +303,10 @@ app.MapGet("/invoice/{id:long}.pdf", async (long id, HttpContext ctx) =>
 app.MapGet("/invoice/{id:long}.png", async (long id, HttpContext ctx) =>
 {
     var me = await Auth.CurrentUserAsync(ctx);
-    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
+    if ((me is null || !me.CanWrite) && !InvoiceDownloadToken.IsValid(ctx.Request.Query["token"], id)) { ctx.Response.StatusCode = 403; return; }
     var row = (await store.ListAsync()).FirstOrDefault(r => r.Id == id);
     if (row is null) { ctx.Response.StatusCode = 404; return; }
-    var png = await PngService.RenderAsync(row, me.User);
+    var png = await PngService.RenderAsync(row, me?.User);
     if (png is null) { ctx.Response.StatusCode = 503; return; }
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "image/png";
