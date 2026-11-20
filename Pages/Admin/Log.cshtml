@@ -1,0 +1,58 @@
+@page
+@model LogModel
+@{
+    ViewData["Title"] = "Invoice history";
+}
+<div class="panel">
+  <h2>Invoice history@(Model.ViewUser is null ? "" : " — " + Model.ViewUser.Username)</h2>
+  <p class="hint">Week = Monday–Sunday, Yangon time. Totals are computed on the server.</p>
+  <p>
+    <a class="btn ghost" href="/admin/log/export">Export CSV</a>
+    @if (Model.Me is not null)
+    {
+      <span> · </span><a href="/admin/log">All</a>
+      @foreach (var u in Model.Users)
+      {
+        <span> · </span><a href="/admin/log?user=@u.LocalId">@u.Username</a>
+      }
+    }
+  </p>
+</div>
+
+@foreach (var sec in Model.Sections)
+{
+  <div class="panel">
+    <h2>@sec.Title</h2>
+    @if (sec.Rows.Count == 0)
+    {
+      <p class="hint">No invoices.</p>
+    }
+    @foreach (var inv in sec.Rows)
+    {
+      <div class="log-row">
+        <span class="log-no">@inv.No</span>
+        <span>@Paper.FmtDate(inv.Date)</span>
+        <span>@inv.Customer</span>
+        <span class="amt">@Paper.Fmt(inv.Total) MMK</span>
+        <a href="/invoice/@inv.Id">View</a>
+        @if (Model.CanEdit(inv))
+        {
+          <a href="/form?id=@inv.Id">Edit</a>
+        }
+      </div>
+    }
+    <div class="totals-line"><span>Total</span><span>@Paper.Fmt(sec.Total) MMK</span></div>
+  </div>
+}
+
+@if (Model.Me is not null && Model.Me.CanWrite)
+{
+  <div class="panel">
+    <h2>Import CSV</h2>
+    <p class="hint">Upload a CSV in the same format as Export CSV. Each row becomes a new invoice with a fresh number; the No. column is ignored.</p>
+    <form method="post" asp-page-handler="Import" enctype="multipart/form-data">
+      <label class="fld"><span>CSV file</span><input name="CsvFile" type="file" accept=".csv,text/csv" required /></label>
+      <button class="btn" type="submit">Import</button>
+    </form>
+  </div>
+}
