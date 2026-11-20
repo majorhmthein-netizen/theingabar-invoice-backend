@@ -8,7 +8,7 @@
   <p class="hint">Mechanics log in with their phone and a one-time code. You stay logged in until you tap Log out.</p>
   @if (!Model.Step2)
   {
-    <form method="post" asp-page-handler="Request">
+    <form method="post" asp-page-handler="Request" id="request-form">
       <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
       <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
       @if (Model.LockoutSeconds > 0)
@@ -19,8 +19,10 @@
       {
         <p class="field-error">@Model.Error</p>
       }
-      <button class="btn" type="submit" id="send-code-btn" @(Model.LockoutSeconds > 0 ? "disabled" : "")>Send code</button>
+      <button class="btn" type="submit" id="send-code-btn" @(Model.LockoutSeconds > 0 ? "disabled" : "")>Log in</button>
+      <p class="hint" id="sending-status" hidden>Code is sending via sms <span id="sending-countdown">45s</span></p>
     </form>
+    <script src="/js/login-loading.js" defer></script>
     @if (Model.LockoutSeconds > 0)
     {
       <script src="/js/countdown.js" defer></script>
