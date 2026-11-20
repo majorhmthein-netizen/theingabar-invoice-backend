@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Npgsql;
@@ -126,6 +127,14 @@ builder.Services.AddRazorPages()
     });
 builder.Services.AddAntiforgery();
 builder.Services.AddHttpClient();
+
+// Trust Render's forwarded headers (see UseForwardedHeaders below).
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 builder.Services.AddSingleton<IInvoiceStore>(store);
 
 if (googleConfigured)
@@ -149,7 +158,15 @@ if (googleConfigured)
         });
 }
 
-var app = builder.Build(); InvoiceDownloadToken.Init(app.Services.GetRequiredService<IDataProtectionProvider>());
+var app = builder.Build();
+
+// Render terminates TLS at its proxy and forwards X-Forwarded-Proto:
+// https. Without this the app sees plain http and the Google handler
+// builds an http:// redirect_uri, which Google rejects with
+// "Error 400: redirect_uri_mismatch" (seen 2026-11-20 on Han's phone).
+// Render is the only ingress, so all proxies are trusted. Must run
+// first, before auth and before anything that reads Request.Scheme.
+app.UseForwardedHeaders();
 
 /* --- Security headers on every response (plan §7.1 #9) --- */
 app.Use(async (ctx, next) =>
@@ -283,16 +300,16 @@ app.MapGet("/qr/user/{id:int}", async (int id, HttpResponse res) =>
 });
 
 /* ------------------------------------------------------------------ */
-/* Invoice PDF / PNG exports (approved users or a signed download token)                      */
+/* Invoice PDF / PNG exports (approved users only)                      */
 /* ------------------------------------------------------------------ */
 
 app.MapGet("/invoice/{id:long}.pdf", async (long id, HttpContext ctx) =>
 {
     var me = await Auth.CurrentUserAsync(ctx);
-    if ((me is null || !me.CanWrite) && !InvoiceDownloadToken.IsValid(ctx.Request.Query["token"], id)) { ctx.Response.StatusCode = 403; return; }
+    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
     var row = (await store.ListAsync()).FirstOrDefault(r => r.Id == id);
     if (row is null) { ctx.Response.StatusCode = 404; return; }
-    var pdf = await PdfService.RenderAsync(row, me?.User);
+    var pdf = await PdfService.RenderAsync(row, me.User);
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "application/pdf";
     ctx.Response.Headers.ContentDisposition =
@@ -303,10 +320,10 @@ app.MapGet("/invoice/{id:long}.pdf", async (long id, HttpContext ctx) =>
 app.MapGet("/invoice/{id:long}.png", async (long id, HttpContext ctx) =>
 {
     var me = await Auth.CurrentUserAsync(ctx);
-    if ((me is null || !me.CanWrite) && !InvoiceDownloadToken.IsValid(ctx.Request.Query["token"], id)) { ctx.Response.StatusCode = 403; return; }
+    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
     var row = (await store.ListAsync()).FirstOrDefault(r => r.Id == id);
     if (row is null) { ctx.Response.StatusCode = 404; return; }
-    var png = await PngService.RenderAsync(row, me?.User);
+    var png = await PngService.RenderAsync(row, me.User);
     if (png is null) { ctx.Response.StatusCode = 503; return; }
     ctx.Response.StatusCode = 200;
     ctx.Response.ContentType = "image/png";
