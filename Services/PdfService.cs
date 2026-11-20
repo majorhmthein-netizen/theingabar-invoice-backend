@@ -49,6 +49,7 @@ public static class PdfService
             FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSerifMyanmar-Bold.ttf")));
             FontManager.RegisterFont(File.OpenRead(ResolveFont("NotoSerifMyanmar-Black.ttf")));
             FontManager.RegisterFont(File.OpenRead(ResolveFont("Archivo.ttf")));
+            FontManager.RegisterFont(File.OpenRead(ResolveFont("U-Moe-Handwritten.ttf")));
             _fontsRegistered = true;
         }
     }
@@ -66,6 +67,12 @@ public static class PdfService
     static TextStyle Serif(float size, int weight, string color) =>
         TextStyle.Default.FontFamily("Noto Serif Myanmar").FontSize(size).FontColor(color)
             .Weight(weight >= 900 ? FontWeight.Black : FontWeight.Bold);
+
+    // Shop-name title only: the user's handwritten font (family name as the
+    // font declares it: "Z01-Umoe002"). It ships in weight 400 only, so no
+    // Weight() call — QuestPDF/Skia uses the single face as-is.
+    static TextStyle ShopTitle(float size, string color) =>
+        TextStyle.Default.FontFamily("Z01-Umoe002").FontSize(size).FontColor(color);
 
     public static async Task<byte[]> RenderAsync(InvoiceRow row, UserRow? viewer)
     {
@@ -102,7 +109,7 @@ public static class PdfService
                     // --- head (centred, double rule below) ---
                     col.Item().AlignCenter().Column(h =>
                     {
-                        h.Item().AlignCenter().Text(meta.Shop).Style(Serif(33, 900, "#0b5394"));
+                        h.Item().AlignCenter().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
                         h.Item().AlignCenter().Text("INVOICE").Style(Latin(14.25f, 800, "#14202e").LetterSpacing(0.55f));
                         h.Item().AlignCenter().Text(meta.Group).Style(Latin(7.9f, 700, "#b98a1c").LetterSpacing(0.28f));
                         h.Item().PaddingTop(7).AlignCenter().Text(meta.Services)
