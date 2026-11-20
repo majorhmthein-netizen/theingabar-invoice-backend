@@ -1,41 +1,33 @@
 /* Theingabar Invoice — HTML-only version: authentication + sessions.
  *
- * Security model (plan §7):
- * - Login = username + password (min 6 chars), hashed server-side with
- *   ASP.NET Core PasswordHasher (PBKDF2). The old client pinDigest hashes
- *   are never reused and cannot be migrated (one-way, weak 32-bit).
+ * Security model (OTP-only, 2026-11-21):
+ * - Mechanics log in with their phone + a 6-digit OTP sent by SMSPoh's
+ *   hosted Verify API (see SmsPoh.cs). NO password anywhere: signup takes
+ *   username + phone only, login takes phone + code. Old password_hash
+ *   values are dead data, never verified. The Admin signs in with Google
+ *   only — OTP login refuses admin accounts, so a stolen phone's SMS
+ *   inbox can never become an admin login.
  * - Sessions are opaque ids in Postgres; the browser cookie holds only
- *   the id. Q7: NO persistent login — the cookie has no Expires/Max-Age
- *   (session cookie, dies on browser close); the server row also expires
- *   after 12 h as a backstop. Log in again on every open.
+ *   the id. NO expiry: a login lasts until the user taps Log out, or the
+ *   Admin revokes/suspends/rejects the account (Han 2026-11-21: every
+ *   re-login costs one SMS, so frequent logins waste money). The cookie
+ *   has no Expires/Max-Age (it lives as long as the browser keeps it)
+ *   and the server row expires only after 100 years.
  * - The __Host- cookie prefix is used only over HTTPS (browsers reject a
  *   __Host- cookie without Secure); over plain HTTP (local dev) the
  *   plain name is used instead.
- * - Rate limits are DB-backed (AppDb.rate_limits): login 3/min per
- *   account+IP, admin 3 failures → 5-min lockout.
+ * - Rate limits are DB-backed (AppDb.rate_limits): OTP requests 3 per
+ *   10 min per phone+IP (each request costs one SMS) + 10 per hour per IP;
+ *   admin 3 failures → 5-min lockout.
  * - Google sign-in is admin-only; the allowlist is the two addresses.
  */
-using Microsoft.AspNetCore.Identity;
-
 public static class Auth
 {
     public static readonly string[] AdminEmails =
         { "hanmintheinn@gmail.com", "majorhmthein@gmail.com" };
 
-    static readonly PasswordHasher<string> Hasher = new();
-
     public static string CookieName(HttpRequest req) =>
         req.IsHttps ? "__Host-tgb-session" : "tgb-session";
-
-    public static string HashPassword(string password) =>
-        Hasher.HashPassword("user", password);
-
-    public static bool VerifyPassword(string? hash, string password)
-    {
-        if (string.IsNullOrEmpty(hash)) return false;
-        return Hasher.VerifyHashedPassword("user", hash, password)
-            == PasswordVerificationResult.Success;
-    }
 
     /// <summary>Resolves the current logged-in user from the session cookie.
     /// Returns null when there is no valid session (not logged in, expired,
@@ -68,7 +60,9 @@ public static class Auth
             SameSite = SameSiteMode.Lax,
             Path = "/",
             IsEssential = true,
-            // No Expires/MaxAge: session cookie — dies on browser close (Q7).
+            // No Expires/MaxAge: the cookie lives as long as the browser
+            // keeps it; the server session has no expiry either (see
+            // CreateSessionAsync). Login ends only via Log out / Revoke.
         });
     }
 
@@ -94,23 +88,20 @@ public static class Auth
 
     /* ---------------- rate limiting ---------------- */
 
-    public static async Task<(bool Allowed, int RetryAfter)> CheckLoginLimitAsync(string username, string ip)
+    /// <summary>OTP requests: 3 per 10 min per phone+IP (each request costs
+    /// one SMS), plus 10 per hour per IP. Returns (allowed, retryAfterSeconds).</summary>
+    public static async Task<(bool Allowed, int RetryAfter)> CheckOtpRequestLimitAsync(string phone, string ip)
     {
-        var (okAcct, retryAcct) = await AppDb.CheckRateLimitAsync(
-            "login:" + username.Trim().ToLowerInvariant() + ":" + ip, 3, 60, 60);
-        if (!okAcct) return (false, retryAcct);
-        return await AppDb.CheckRateLimitAsync("login-ip:" + ip, 20, 60, 60);
+        var (okPhone, retryPhone) = await AppDb.CheckRateLimitAsync(
+            "otp-req:" + phone + ":" + ip, 3, 600, 600);
+        if (!okPhone) return (false, retryPhone);
+        return await AppDb.CheckRateLimitAsync("otp-req-ip:" + ip, 10, 3600, 3600);
     }
 
-    public static async Task RecordLoginFailureAsync(string username, string ip)
+    public static async Task RecordOtpRequestAsync(string phone, string ip)
     {
-        await AppDb.RecordAttemptAsync("login:" + username.Trim().ToLowerInvariant() + ":" + ip, 60);
-        await AppDb.RecordAttemptAsync("login-ip:" + ip, 60);
-    }
-
-    public static async Task ResetLoginLimitAsync(string username, string ip)
-    {
-        await AppDb.ResetRateLimitAsync("login:" + username.Trim().ToLowerInvariant() + ":" + ip);
+        await AppDb.RecordAttemptAsync("otp-req:" + phone + ":" + ip, 600);
+        await AppDb.RecordAttemptAsync("otp-req-ip:" + ip, 3600);
     }
 
     /// <summary>Admin Google sign-in failures: 3 failures → 5-min lockout.</summary>
@@ -143,14 +134,6 @@ public static class Auth
 
     public static string NormalizePhone(string phone) =>
         phone.Trim().Replace(" ", "").Replace("-", "");
-
-    public static string? ValidatePassword(string? password)
-    {
-        if (string.IsNullOrEmpty(password)) return "password is required";
-        if (password.Length < 6) return "password must be at least 6 characters";
-        if (password.Length > 128) return "password must be at most 128 characters";
-        return null;
-    }
 
     public static bool IsAdminEmail(string? email) =>
         email is not null && AdminEmails.Contains(email.Trim(), StringComparer.OrdinalIgnoreCase);

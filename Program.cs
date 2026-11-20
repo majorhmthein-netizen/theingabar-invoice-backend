@@ -9,15 +9,18 @@
  *  (2) HTML-only frontend (Razor Pages): server-rendered pages, no
  *      custom JS in served HTML except the cache-only service worker
  *      registration (one tiny file, no app logic). Sessions are opaque
- *      ids in Postgres; login is username + password (PBKDF2); admin
- *      signs in via server-side Google OAuth (env GOOGLE_CLIENT_ID /
+ *      ids in Postgres; mechanics log in with phone + OTP via SMSPoh
+ *      Verify API (no password anywhere); admin signs in via
+ *      server-side Google OAuth (env GOOGLE_CLIENT_ID /
  *      GOOGLE_CLIENT_SECRET). No secrets in served HTML. See Db.cs,
- *      Auth.cs and HTML-ONLY-PLAN.md.
+ *      Auth.cs, SmsPoh.cs and HTML-ONLY-PLAN.md.
  *
  * Env: PORT (Render sets it; default 10000), DATABASE_URL,
  * INVOICE_API_KEY (legacy /api only), NODE_ENV (compat, unused),
  * GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (admin sign-in; optional —
- * admin sign-in is unavailable without them, everything else works).
+ * admin sign-in is unavailable without them, everything else works),
+ * SMSPOH_API_KEY, SMSPOH_API_SECRET (OTP login; optional — OTP is
+ * unavailable without them, everything else works).
  */
 using System.Globalization;
 using System.Security.Claims;

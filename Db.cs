@@ -229,6 +229,18 @@ public static class AppDb
         return await r.ReadAsync() ? ReadUser(r) : null;
     }
 
+    public static async Task<UserRow?> FindUserByPhoneAsync(string phone)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
+            "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
+            "(qr IS NOT NULL) FROM users WHERE phone = @p", conn);
+        cmd.Parameters.AddWithValue("@p", phone.Trim());
+        await using var r = await cmd.ExecuteReaderAsync();
+        return await r.ReadAsync() ? ReadUser(r) : null;
+    }
+
     public static async Task<UserRow?> FindUserByLocalIdAsync(string localId)
     {
         await using var conn = await DataSource!.OpenConnectionAsync();
@@ -287,17 +299,18 @@ public static class AppDb
         r.IsDBNull(11) ? (DateTime?)null : r.GetDateTime(11),
         r.GetDateTime(12), r.GetDateTime(13), r.GetBoolean(14));
 
-    public static async Task<int> CreateUserAsync(string username, string phone, string passwordHash)
+    // OTP-only: no password is ever set. password_hash stays NULL (old
+    // hashes are dead data, ignored, never verified).
+    public static async Task<int> CreateUserAsync(string username, string phone)
     {
         var localId = "u" + Guid.NewGuid().ToString("N")[..12];
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "INSERT INTO users (local_id, username, phone, password_hash, kbz_name, kbz_number, status) " +
-            "VALUES (@l, @u, @p, @h, @u, @p2, 'pending') RETURNING id", conn);
+            "VALUES (@l, @u, @p, NULL, @u, @p2, 'pending') RETURNING id", conn);
         cmd.Parameters.AddWithValue("@l", localId);
         cmd.Parameters.AddWithValue("@u", username.Trim());
         cmd.Parameters.AddWithValue("@p", phone.Trim());
-        cmd.Parameters.AddWithValue("@h", passwordHash);
         cmd.Parameters.AddWithValue("@p2", phone.Trim());
         return (int)(await cmd.ExecuteScalarAsync())!;
     }
@@ -329,16 +342,6 @@ public static class AppDb
         cmd.Parameters.AddWithValue("@hasQr", qr is not null);
         cmd.Parameters.AddWithValue("@qr", (object?)qr ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@qt", (object?)qrType ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@id", id);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    public static async Task SetUserPasswordAsync(int id, string passwordHash)
-    {
-        await using var conn = await DataSource!.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand(
-            "UPDATE users SET password_hash = @h, updated_at = now() WHERE id = @id", conn);
-        cmd.Parameters.AddWithValue("@h", passwordHash);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
     }
@@ -428,13 +431,18 @@ public static class AppDb
 
     /* ---------------- sessions ---------------- */
 
+    // NO session expiry (Han 2026-11-21: every re-login costs one SMS, so a
+    // login must last until the user taps Log out, or the Admin revokes it).
+    // expires_at is kept far in the future so the FindSessionAsync check
+    // still works; the row is ended only by explicit Log out, Revoke,
+    // Suspend or Reject.
     public static async Task<string> CreateSessionAsync(int userId, bool isAdmin, string? ip, string? userAgent)
     {
         var id = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "INSERT INTO sessions (id, user_id, is_admin, expires_at, ip, user_agent) " +
-            "VALUES (@id, @u, @a, now() + interval '12 hours', @ip, @ua)", conn);
+            "VALUES (@id, @u, @a, now() + interval '100 years', @ip, @ua)", conn);
         cmd.Parameters.AddWithValue("@id", id);
         cmd.Parameters.AddWithValue("@u", userId);
         cmd.Parameters.AddWithValue("@a", isAdmin);
