@@ -1,11 +1,15 @@
-# Theingabar Invoice — Backend (Render Web Service)
+# Theingabar Invoice — Backend (Render Web Service, C# / ASP.NET Core 8)
 
-Web Service backend for the Theingabar Invoice PWA. The same Node server
+Web Service backend for the Theingabar Invoice PWA. The same C# server
 serves the PWA frontend (from `public/`) and stores invoices on the server,
 so the invoice log is shared across phones — no longer phone-only.
 
-- **Server:** Node 20, built-in `http` only. One dependency: `pg`
-  (PostgreSQL client). No Express.
+This is a faithful port of the original Node server (`server.js`): same API,
+same validation messages, same JSON shapes, same Postgres schema and
+startup migrations, same JSON-file fallback store.
+
+- **Server:** ASP.NET Core 8 minimal API (single file `Program.cs`).
+  One dependency: `Npgsql` (PostgreSQL client). No other framework.
 - **Store:** PostgreSQL when `DATABASE_URL` is set (table `invoices`,
   created on boot), otherwise a local JSON file `./data/invoices.json`
   (atomic write) so it still works locally.
@@ -30,37 +34,51 @@ so the invoice log is shared across phones — no longer phone-only.
 | POST | `/api/invoices` | Body `{date, customer, items:[{desc,amount}], total}`; `total` must equal the sum of items or the server rejects it (400); max 20 items |
 | PUT | `/api/invoices/:id` | Same body; updates the server row |
 | DELETE | `/api/invoices/:id` | |
-| GET | `/api/export.csv` | Same columns as the PWA log export (Item 1–20 amounts, items sum, total, check) |
+| GET | `/api/export.csv` | Same columns as the PWA log export (Item 1–20 amounts, items sum, total, check, No.) |
 
 Validation (all stores): `date` and `customer` required, items max 20,
 each amount an integer ≥ 0, `total` must equal the sum of item amounts.
+Invoice numbers are global + sequential (`YYYYMMDD-NNN`); a duplicate
+number is rejected with 409 and the client re-numbers once and retries.
+A duplicate `uid` returns the existing row (201).
 
-## Deploy to Render (via GitHub + Blueprint)
+## Deploy to Render — switching the existing Node service to Docker
 
-1. Create a GitHub repo, e.g. **`theingabar-invoice-backend`**, branch
-   `main`, and upload all files in this folder (including `public/`).
-2. Render Dashboard → **New → Blueprint** → pick that repo. Render
-   creates two resources from `render.yaml`:
-   - PostgreSQL **`theingabar-invoice-db`** (free, Postgres 16)
-   - Web Service **`theingabar-invoice-web`** (Node, free,
-     build `npm install`, start `node server.js`, health check
-     `/api/health`)
-3. When it is Live, open the Web Service URL
-   (e.g. `https://theingabar-invoice-web.onrender.com`).
-4. **First open — enter the server key:** Render Dashboard → the Web
-   Service → **Environment** → copy the generated `INVOICE_API_KEY`
-   value → in the app, open **Shop Metadata → Server key**, paste it,
-   save. The app then syncs; the status line in the Invoice Log should
-   read **Server: Synced**.
+Render has **no native .NET runtime**, so this service runs from the
+`Dockerfile` (multi-stage: .NET 8 SDK build → ASP.NET Core 8 runtime,
+non-root). A Blueprint **cannot** change an existing service's runtime
+(Node → Docker) — Render rejects it. Switch the live service in the
+Dashboard instead:
+
+1. Push this folder to the GitHub repo
+   **`theingabar-invoice-backend`**, branch `main` (replace the Node files;
+   `public/` is unchanged).
+2. Render Dashboard → Web Service **`theingabar-invoice-web`** → **Settings**
+   → **Build** → **Source** → **Edit** → set **Runtime: Docker** (leave the
+   repo/branch as-is) → **Deploy**. This keeps the service name, the URL
+   (`https://theingabar-invoice-web.onrender.com`), all env vars and the
+   `DATABASE_URL` link to the existing database `theingabar-invoice-db`.
+   The existing `render.yaml` is for a fresh Blueprint (or reference) — it
+   declares the same service/database names so a fresh apply reuses the
+   existing database; verify in the Dashboard that no second database was
+   created.
+3. **Do NOT regenerate `INVOICE_API_KEY`.** The live key is already set on
+   the service and every phone has it saved — rotating it breaks all saved
+   keys. `render.yaml` declares it as `sync: false` for exactly this reason.
+4. When it is Live, open the Web Service URL and check
+   `/api/health` → `{"ok":true,"store":"postgres"}`. The first deploy runs
+   the Postgres startup migrations (new columns, unique index on `no`,
+   one-time 001 → 002 seed rename) — all idempotent.
 5. **Seeding:** on the first successful sync, if the server log is empty
    and the phone's local log is not, the app posts each local invoice to
    the server — so the Nissan Safari invoice (19.11.2026, 120,000 +
-   50,000 + 130,000 = 300,000 MMK) uploads itself. No manual seed step.
+   50,000 + 130,000 = 300,000 MMK, No. 20261119-002) uploads itself.
+   No manual seed step.
 
-Manual alternative (no Blueprint): Render → **New → PostgreSQL**, then
-**New → Web Service** (Node, same build/start commands), set
-`DATABASE_URL` from the database and `INVOICE_API_KEY` to a long random
-value yourself.
+Manual alternative (new service): Render → **New → Web Service** →
+Language **Docker**, Dockerfile Path `./Dockerfile`, set `DATABASE_URL`
+from the existing database and `INVOICE_API_KEY` to the **same** value as
+the old service (copy it from Dashboard → old service → Environment).
 
 ## ⚠️ Free PostgreSQL expires after 90 days
 
@@ -74,25 +92,9 @@ is deleted. Before expiry, either:
 ## Local development
 
 ```sh
-npm install
-node server.js          # no DATABASE_URL -> JSON file store, open API
+dotnet restore
+dotnet run            # no DATABASE_URL -> JSON file store, open API
 # then: http://localhost:10000/  (or $PORT)
+# With a key:  INVOICE_API_KEY=testkey dotnet run
+# With Postgres: DATABASE_URL=postgres://user:pass@host:5432/db dotnet run
 ```
-
-With Postgres locally, set `DATABASE_URL` (see `.env.example`).
-
-## Caveats
-
-- **Free Web Service sleeps:** Render's free Web Service spins down
-  after inactivity; the first open after a pause takes ~30–60 s to wake.
-  The app shows "Offline" until then and retries on the next open.
-- **PIN reset erases the phone only.** "Forgot PIN? Erase all app data"
-  clears the phone's IndexedDB; the server copy stays, and the next
-  sync will bring those invoices back. To wipe the server log too,
-  delete the rows (or the database) in Render.
-- **Offline deletes:** an invoice deleted while offline is removed from
-  the phone, but its server copy is only deleted when the phone is back
-  online at delete time — otherwise it reappears on the next sync.
-- The live Static Site `theingabar-invoice` is a separate service and is
-  untouched by this repo. After this deploys, use the Web Service URL
-  as the app URL (it serves the same PWA, plus the API).

@@ -1,0 +1,9 @@
+# .NET build outputs
+bin/
+obj/
+# Local JSON fallback store (created when no DATABASE_URL is set)
+data/
+# Docker build context
+.git
+# Local secrets — never commit
+.env

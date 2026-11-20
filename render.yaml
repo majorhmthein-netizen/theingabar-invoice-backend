@@ -1,31 +1,47 @@
-# Theingabar Invoice — Render Blueprint (Web Service + PostgreSQL).
-# Deploy via: Render Dashboard -> New -> Blueprint -> connect the GitHub repo
-# containing this file. Render creates BOTH resources below in one go.
+# Theingabar Invoice — Render Blueprint (Docker Web Service + PostgreSQL).
+# C# / ASP.NET Core 8 backend (replaces the Node server; same API, same DB).
+#
+# *** READ BEFORE APPLYING — switching the EXISTING service ***
+# Render does NOT let a Blueprint change an existing service's runtime
+# (Node -> Docker). Re-applying this file alone will NOT flip the live
+# service 'theingabar-invoice-web' — Render rejects the runtime change.
+# Switch it in the Dashboard instead:
+#   theingabar-invoice-web -> Settings -> Build -> Source -> Edit
+#   -> Runtime: Docker -> Deploy.
+# That keeps the service name, the URL
+# (https://theingabar-invoice-web.onrender.com), every env var (including
+# the generated INVOICE_API_KEY) and the DATABASE_URL link to the existing
+# database. The render.yaml below is for a fresh Blueprint (or reference):
+# it declares the SAME service and database names, so a fresh apply reuses
+# the existing database instead of creating a new one. Verify in the
+# Dashboard after applying that no second database was created.
+#
+# INVOICE_API_KEY is sync:false ON PURPOSE: the live key is already set on
+# the service and every phone has it saved. It must NEVER be regenerated
+# (generateValue would rotate it and break all saved keys). On a fresh
+# Blueprint, Render asks for the value at creation — paste the existing
+# key from the old service's Environment page.
 #
 # What you get:
-#   - Web Service  "theingabar-invoice-web"  (Node, serves the PWA + /api)
-#   - PostgreSQL   "theingabar-invoice-db"   (free plan, Postgres 16)
-# The web service gets DATABASE_URL from the database automatically, and a
-# random INVOICE_API_KEY is generated — copy it into the app's "Server key"
-# prompt on first open (see README.md).
+#   - Web Service  "theingabar-invoice-web"  (Docker, ASP.NET Core 8, serves the PWA + /api)
+#   - PostgreSQL   "theingabar-invoice-db"   (free plan, Postgres 18, existing data kept)
 #
 # NOTE: the live Static Site "theingabar-invoice" is a SEPARATE service and
-# is not touched by this Blueprint. After this deploys, the Web Service URL
-# (https://theingabar-invoice-web.onrender.com) becomes the app URL.
+# is not touched by this Blueprint.
 
 databases:
   - name: theingabar-invoice-db
     plan: free
     databaseName: theingabar_invoice
     user: theingabar_invoice
-    
+
 services:
   - type: web
     name: theingabar-invoice-web
-    env: node
+    runtime: docker
     plan: free
-    buildCommand: npm install
-    startCommand: node server.js
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
@@ -33,6 +49,6 @@ services:
           name: theingabar-invoice-db
           property: connectionString
       - key: INVOICE_API_KEY
-        generateValue: true
+        sync: false
       - key: NODE_ENV
         value: production
