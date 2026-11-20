@@ -74,6 +74,10 @@ else
               <button class="mini-btn" type="submit">Unsuspend</button>
             </form>
           }
+          <form method="post" asp-page-handler="RevokeSessions" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Revoke sessions</button>
+          </form>
         </span>
       </div>
     }
