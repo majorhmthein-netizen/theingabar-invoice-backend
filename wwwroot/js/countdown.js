@@ -1,5 +1,5 @@
-// Live countdown for the OTP lockout: ticks the remaining time down
-// each second, then re-enables the Send code button.
+// Live countdown for the PIN lockout: ticks the remaining time down
+// each second, then re-enables the Log in button.
 (function () {
   var el = document.getElementById('lockout-countdown');
   if (!el) return;
