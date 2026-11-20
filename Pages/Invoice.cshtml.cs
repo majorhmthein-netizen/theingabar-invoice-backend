@@ -11,7 +11,9 @@ public class InvoiceModel : AppPageModel
     public async Task<IActionResult> OnGetAsync(long id)
     {
         if (NeedDb(out var redirect)) return redirect!;
-        await LoadCommonAsync();
+        // Locked like the PDF/PNG exports (2026-11-21): approved users only.
+        // NeedWriteAsync loads Me/Meta itself (via NeedLoginAsync).
+        if (await NeedWriteAsync() is { } writeRedirect) return writeRedirect;
         Row = (await _store.ListAsync()).FirstOrDefault(r => r.Id == id);
         if (Row is null) return NotFound();
         UserRow? owner = null;

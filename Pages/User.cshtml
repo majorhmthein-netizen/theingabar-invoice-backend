@@ -12,9 +12,10 @@
   }
 </div>
 
-<div class="panel">
+<div class="panel panel-fill">
   <h2>KBZ Pay template</h2>
   <p class="hint">Your name, number and QR shown on the invoices you issue. Leave the QR empty to keep the current one.</p>
+  <div class="scroll">
   <form method="post" asp-page-handler="Template" enctype="multipart/form-data">
     <label class="fld"><span>KBZ Pay name</span><input name="KbzName" value="@Model.KbzName" maxlength="128" /></label>
     <label class="fld"><span>KBZ Pay number</span><input name="KbzNumber" value="@Model.KbzNumber" maxlength="20" inputmode="tel" /></label>
@@ -25,6 +26,7 @@
     }
     <button class="btn" type="submit">Save template</button>
   </form>
+  </div>
 </div>
 
 <div class="panel">

@@ -26,8 +26,9 @@
   <div class="totals-line"><span>This month</span><span>@Paper.Fmt(Model.MonthTotal) MMK</span></div>
 </div>
 
-<div class="panel">
+<div class="panel panel-fill">
   <h2>Recent invoices</h2>
+  <div class="scroll">
   @if (Model.Recent.Count == 0)
   {
     <p class="hint">No invoices yet.</p>
@@ -42,6 +43,7 @@
       <a href="/invoice/@inv.Id">View</a>
     </div>
   }
+  </div>
 </div>
 
 @functions {
