@@ -2,7 +2,7 @@
  *
  * The backend never generates, stores or checks OTP codes itself:
  * SMSPoh's hosted Verify API does that server-side. Two calls:
- *   Request: POST https://v3.smspoh.com/api/otp/request?from=SMSPoh&to=09...&brand=Theingabar
+ *   Request: POST https://v3.smspoh.com/api/otp/request?from=SMSPohTest&to=09...&brand=Theingabar
  *            &pinLength=6&ttl=300&maxInvalidAttempts=5&accessToken=...
  *            -> 201 returns { "requestId": "..." } (the SMS is sent by SMSPoh).
  *   Verify:  POST https://v3.smspoh.com/api/otp/verify?requestId=...&code=...&accessToken=...
@@ -26,7 +26,10 @@ using System.Text.Json;
 public static class SmsPoh
 {
     const string BaseUrl = "https://v3.smspoh.com/api/otp";
-    const string From = "SMSPoh";          // provider default sender (no custom sender ID yet)
+    const string From = "SMSPohTest";    // SMSPoh test sender (usable before onboarding).
+                                         // "SMSPoh" is NOT registered on this account
+                                         // (error 10 Invalid Sender ID, 2026-11-21).
+                                         // Switch to "Theingabar" once that sender ID is approved.
     const string Brand = "Theingabar";     // shop brand name (<= 11 chars)
     public const int PinLength = 6;
     public const int TtlSeconds = 300;     // 5 minutes
