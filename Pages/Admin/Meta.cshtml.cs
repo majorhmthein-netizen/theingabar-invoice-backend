@@ -8,6 +8,9 @@ public class AdminMetaModel : AppPageModel
     [BindProperty] public string Address { get; set; } = "";
     [BindProperty] public string Phone1 { get; set; } = "";
     [BindProperty] public string Phone2 { get; set; } = "";
+    [BindProperty] public string Phone3 { get; set; } = "";
+    [BindProperty] public string Phone4 { get; set; } = "";
+    [BindProperty] public string Phone5 { get; set; } = "";
     [BindProperty] public string PayName { get; set; } = "";
     [BindProperty] public string PayNum { get; set; } = "";
     [BindProperty] public string Thanks { get; set; } = "";
@@ -18,7 +21,9 @@ public class AdminMetaModel : AppPageModel
         if (await NeedAdminAsync() is { } redirect) return redirect;
         var m = await AppDb.GetMetaAsync();
         Shop = m.Shop; Group = m.Group; Services = m.Services; Address = m.Address;
-        Phone1 = m.Phone1; Phone2 = m.Phone2; PayName = m.PayName; PayNum = m.PayNum;
+        Phone1 = m.Phone1; Phone2 = m.Phone2;
+        Phone3 = m.Phone3 ?? ""; Phone4 = m.Phone4 ?? ""; Phone5 = m.Phone5 ?? "";
+        PayName = m.PayName; PayNum = m.PayNum;
         Thanks = m.Thanks; HasQr = m.HasQr;
         return Page();
     }
@@ -46,9 +51,12 @@ public class AdminMetaModel : AppPageModel
             qr = ms.ToArray();
         }
         var m = new MetaRow(Shop.Trim(), Group.Trim(), Services.Trim(), Address.Trim(),
-            Phone1.Trim(), Phone2.Trim(), PayName.Trim(), PayNum.Trim(), Thanks.Trim(), HasQr);
+            Phone1.Trim(), Phone2.Trim(), Opt(Phone3), Opt(Phone4), Opt(Phone5),
+            PayName.Trim(), PayNum.Trim(), Thanks.Trim(), HasQr);
         await AppDb.UpdateMetaAsync(m, qr, qrType);
         Flash("Shop metadata saved.");
         return RedirectToPage("/Admin/Meta");
     }
+
+    static string? Opt(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }
