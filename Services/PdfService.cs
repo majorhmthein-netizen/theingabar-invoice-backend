@@ -1,12 +1,13 @@
 /* Theingabar Invoice — server-side PDF export (QuestPDF 2024.12, Community).
  *
- * Re-implements the FROZEN invoice paper (extract/invoice.css) as a native
- * A4 PDF: same order, same text, same sizes (px → pt at 96 dpi = ×0.75),
- * same colours, same fonts (TTF files in wwwroot/fonts/ttf — Skia cannot
- * load the woff2 files the web pages use). Myanmar shaping is handled by
- * Skia/HarfBuzz inside QuestPDF. Layout drift vs the frozen design is a
- * known risk (plan §9 #4): verify the seed PDF against the current
- * PNG/PDF before cutover.
+ * Mirrors the APPROVED Safari template layout (Han 2026-11-21): two-column
+ * letterhead, boxed customer panel, navy items-table header, boxed payment
+ * panel, two signature lines, thanks + group line. Title U Moe + both
+ * group lines gold (Han-ordered, vs the template's serif title and grey
+ * group line). Same text, same sizes (px → pt at 96 dpi = ×0.75), same
+ * colours, same fonts (TTF files in wwwroot/fonts/ttf — Skia cannot load
+ * the woff2 files the web pages use). Myanmar shaping is handled by
+ * Skia/HarfBuzz inside QuestPDF.
  *
  * UNIT TRAP — QuestPDF TextStyle.LetterSpacing takes a FACTOR proportional
  * to the font size (i.e. em), NOT points. The frozen CSS letter-spacing
@@ -113,110 +114,149 @@ public static class PdfService
                 page.DefaultTextStyle(TextStyle.Default.FontFamily("Noto Sans Myanmar"));
                 page.Content().Column(col =>
                 {
-                    // --- head (centred, double rule below) ---
-                    col.Item().AlignCenter().Column(h =>
+                    // --- letterhead: top rule + brand row (template layout) ---
+                    col.Item().LineHorizontal(3).LineColor("#14202e");
+                    col.Item().PaddingTop(12).Row(r =>
                     {
-                        h.Item().AlignCenter().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
-                        h.Item().AlignCenter().Text("INVOICE").Style(Latin(14.25f, 800, "#0b5394").LetterSpacing(0.55f));
-                        h.Item().AlignCenter().Text(meta.Group).Style(Latin(7.9f, 700, "#D4AF37").LetterSpacing(0.28f));
-                        h.Item().PaddingTop(7).AlignCenter().Text(meta.Services)
-                            .Style(Myanmar(10.1f, 700, "#24344a")).LineHeight(1.75f);
-                        h.Item().PaddingTop(4).Column(a =>
+                        r.RelativeItem().Column(h =>
                         {
-                            a.Item().AlignCenter().Text(t =>
+                            h.Item().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
+                            h.Item().PaddingTop(4).Text(meta.Group)
+                                .Style(Latin(9, 700, "#D4AF37").LetterSpacing(0.18f));
+                        });
+                        r.ConstantItem(135).Column(h =>
+                        {
+                            h.Item().AlignRight().Text("INVOICE")
+                                .Style(Latin(21, 800, "#14202e").LetterSpacing(0.22f));
+                            h.Item().PaddingTop(4).LineHorizontal(3).LineColor("#D4AF37");
+                            h.Item().PaddingTop(5).AlignRight().Text(t =>
                             {
-                                t.Span("Address – ").Style(Myanmar(9.75f, 800, "#24344a"));
-                                t.Span(meta.Address).Style(Myanmar(9.75f, 600, "#24344a"));
+                                t.Span("Date: ").Style(Myanmar(10, 600, "#5b6a7a"));
+                                t.Span(Paper.FmtDateLong(row.Date)).Style(Myanmar(10, 600, "#24344a"));
                             });
-                            a.Item().AlignCenter().Text(t =>
+                            h.Item().PaddingTop(2).AlignRight().Text(t =>
                             {
-                                t.Span("Contact – ").Style(Myanmar(9.75f, 800, "#24344a"));
-                                t.Span(meta.PhonesDisplay).Style(Myanmar(9.75f, 600, "#24344a"));
+                                t.Span("No. ").Style(Myanmar(10, 600, "#5b6a7a"));
+                                t.Span(row.No ?? "").Style(Myanmar(10, 600, "#24344a"));
                             });
                         });
                     });
-                    col.Item().PaddingTop(10).LineHorizontal(2).LineColor("#0b5394");
-                    col.Item().PaddingTop(2).LineHorizontal(1).LineColor("#0b5394");
+                    col.Item().PaddingTop(10).Text(meta.Services)
+                        .Style(Myanmar(10.1f, 700, "#14202e")).LineHeight(1.9f);
+                    col.Item().PaddingTop(8).BorderTop(1).BorderColor("#dfe5ec").Row(r =>
+                    {
+                        r.RelativeItem().PaddingTop(8).Text(t =>
+                        {
+                            t.Span("Address: ").Style(Myanmar(9.75f, 800, "#0b5394"));
+                            t.Span(meta.Address).Style(Myanmar(9.75f, 600, "#14202e"));
+                        });
+                        r.RelativeItem().PaddingTop(8).AlignRight().Text(t =>
+                        {
+                            t.Span("Contact: ").Style(Myanmar(9.75f, 800, "#0b5394"));
+                            t.Span(meta.PhonesDisplay).Style(Myanmar(9.75f, 600, "#14202e"));
+                        });
+                    });
 
-                    // --- meta row ---
-                    col.Item().PaddingTop(12).Row(r =>
+                    // --- customer box ---
+                    col.Item().PaddingTop(14).Border(1).BorderColor("#dfe5ec").Padding(14).Row(r =>
                     {
                         r.RelativeItem().Column(c =>
                         {
-                            c.Item().Text("CUSTOMER INFO").Style(Latin(9, 700, "#5b6a7a").LetterSpacing(0.06f));
-                            c.Item().Text(string.IsNullOrWhiteSpace(row.Customer) ? "—" : row.Customer)
-                                .Style(Myanmar(10.9f, 700, "#14202e"));
+                            c.Item().Text("CUSTOMER / VEHICLE").Style(Latin(9, 700, "#5b6a7a").LetterSpacing(0.14f));
+                            c.Item().PaddingTop(3).Text(string.IsNullOrWhiteSpace(row.Customer) ? "—" : row.Customer)
+                                .Style(Myanmar(14.25f, 700, "#14202e"));
                         });
                         r.RelativeItem().AlignRight().Column(c =>
                         {
-                            c.Item().Text("DATE").Style(Latin(9, 700, "#5b6a7a").LetterSpacing(0.06f));
-                            c.Item().Text(Paper.FmtDate(row.Date)).Style(Myanmar(10.9f, 700, "#14202e"));
-                        });
-                        r.RelativeItem().AlignRight().Column(c =>
-                        {
-                            c.Item().Text("NO.").Style(Latin(9, 700, "#5b6a7a").LetterSpacing(0.06f));
-                            c.Item().Text(row.No ?? "").Style(Myanmar(10.9f, 700, "#14202e"));
+                            c.Item().Text("DATE").Style(Latin(9, 700, "#5b6a7a").LetterSpacing(0.14f));
+                            c.Item().PaddingTop(3).Text(Paper.FmtDate(row.Date)).Style(Myanmar(14.25f, 700, "#14202e"));
+                            c.Item().PaddingTop(3).Text("Currency: MMK").Style(Myanmar(10.5f, 400, "#5b6a7a"));
                         });
                     });
 
-                    // --- items table ---
-                    col.Item().PaddingTop(8).Table(t =>
+                    // --- items table (navy header) ---
+                    col.Item().PaddingTop(14).Table(t =>
                     {
                         t.ColumnsDefinition(cd =>
                         {
-                            cd.ConstantColumn(28);
+                            cd.ConstantColumn(38);
                             cd.RelativeColumn();
                             cd.ConstantColumn(110);
                         });
                         t.Header(h =>
                         {
-                            h.Cell().BorderTop(2).BorderBottom(1.5f).BorderColor("#14202e")
-                                .PaddingVertical(6).Text("No.").Style(Latin(9.4f, 700, "#14202e").LetterSpacing(0.08f));
-                            h.Cell().BorderTop(2).BorderBottom(1.5f).BorderColor("#14202e")
-                                .PaddingVertical(6).Text("DESCRIPTION").Style(Latin(9.4f, 700, "#14202e").LetterSpacing(0.08f));
-                            h.Cell().BorderTop(2).BorderBottom(1.5f).BorderColor("#14202e")
-                                .PaddingVertical(6).AlignRight().Text("AMOUNT (MMK)").Style(Latin(9.4f, 700, "#14202e").LetterSpacing(0.08f));
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .Text("No.").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .Text("DESCRIPTION").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .AlignRight().Text("AMOUNT (MMK)").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
                         });
                         for (var i = 0; i < row.Items.Count; i++)
                         {
                             var it = row.Items[i];
-                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6)
+                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6).PaddingHorizontal(8)
                                 .Text((i + 1).ToString()).Style(Myanmar(10.9f, 400, "#7b8a99"));
-                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6)
+                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6).PaddingHorizontal(8)
                                 .Text(string.IsNullOrWhiteSpace(it.Desc) ? "—" : it.Desc)
                                 .Style(Myanmar(10.9f, 300, "#000000")).LineHeight(1.55f);
-                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6)
+                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6).PaddingHorizontal(8)
                                 .AlignRight().Text(Paper.Fmt(it.Amount)).Style(Myanmar(10.9f, 700, "#000000"));
                         }
-                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8)
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
                             .Text("");
-                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8)
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
                             .Text("Total (MMK)").Style(Myanmar(12.4f, 800, "#14202e"));
-                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8)
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
                             .AlignRight().Text(Paper.Fmt(row.Total)).Style(Myanmar(12.4f, 800, "#0b5394"));
                     });
 
-                    // --- payment + QR ---
-                    col.Item().PaddingTop(12).BorderTop(1).BorderColor("#dfe5ec").Row(r =>
+                    // --- payment box + QR ---
+                    col.Item().PaddingTop(14).Border(1).BorderColor("#dfe5ec").Padding(14).Row(r =>
                     {
-                        r.RelativeItem().PaddingTop(10).Column(c =>
+                        r.RelativeItem().Column(c =>
                         {
                             c.Item().Text("PAYMENT").Style(Latin(8.6f, 700, "#5b6a7a").LetterSpacing(0.1f));
-                            c.Item().PaddingTop(3).Text("KBZ Pay").Style(Myanmar(12, 800, "#14202e"));
-                            c.Item().Text("No. " + payNum).Style(Myanmar(11.25f, 700, "#14202e"));
-                            c.Item().Text(t =>
+                            c.Item().PaddingTop(5).Text(t =>
                             {
-                                t.Span("Name. ").Style(Myanmar(11.25f, 400, "#14202e"));
-                                t.Span(payName).Style(Myanmar(11.25f, 700, "#14202e"));
+                                t.Span("KBZ Pay").Style(Myanmar(11.25f, 800, "#0b5394"));
+                                t.Span(" — No. ").Style(Myanmar(11.25f, 400, "#14202e"));
+                                t.Span(payNum).Style(Myanmar(11.25f, 700, "#0b5394"));
+                                t.Span(" — Name: ").Style(Myanmar(11.25f, 400, "#14202e"));
+                                t.Span(payName).Style(Myanmar(11.25f, 700, "#0b5394"));
                             });
+                            c.Item().PaddingTop(3).Text("Scan the QR code with KBZPay to pay.")
+                                .Style(Myanmar(10.5f, 400, "#5b6a7a"));
                         });
                         if (qr is not null)
-                            r.ConstantItem(88).PaddingTop(10).Image(qr).FitArea();
+                            r.ConstantItem(96).Border(1).BorderColor("#dfe5ec").Padding(4)
+                                .Image(qr).FitArea();
+                    });
+
+                    // --- signatures ---
+                    col.Item().PaddingTop(26).Row(r =>
+                    {
+                        r.RelativeItem().Column(c =>
+                        {
+                            c.Item().Height(44).BorderBottom(1).BorderColor("#14202e");
+                            c.Item().PaddingTop(5).AlignCenter().Text("Customer Signature")
+                                .Style(Myanmar(9.75f, 400, "#5b6a7a"));
+                        });
+                        r.ConstantItem(40);
+                        r.RelativeItem().Column(c =>
+                        {
+                            c.Item().Height(44).BorderBottom(1).BorderColor("#14202e");
+                            c.Item().PaddingTop(5).AlignCenter().Text("Authorized Signature")
+                                .Style(Myanmar(9.75f, 400, "#5b6a7a"));
+                        });
                     });
 
                     // --- thanks ---
-                    col.Item().PaddingTop(12).AlignCenter()
-                        .Text(meta.Thanks).Style(Latin(10.1f, 700, "#40536a").LetterSpacing(0.02f));
+                    col.Item().PaddingTop(22).BorderTop(1).BorderColor("#dfe5ec").AlignCenter().Column(c =>
+                    {
+                        c.Item().PaddingTop(12).Text(meta.Thanks).Style(Latin(11.25f, 700, "#0b5394").LetterSpacing(0.02f));
+                        c.Item().PaddingTop(3).Text(Paper.TitleCase(meta.Group)).Style(Latin(10.5f, 600, "#5b6a7a"));
+                    });
                 });
             });
         });
