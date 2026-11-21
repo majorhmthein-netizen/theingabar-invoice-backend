@@ -6,6 +6,23 @@
 <div class="panel panel-fill">
   <h2>All users</h2>
   <p class="hint">Max 5 mechanics. Approve, reject, suspend, revoke sessions, or reset a locked account's login counters.</p>
+  @if (Model.PinRequests.Count > 0)
+  {
+    <h3>PIN reset requests</h3>
+    <p class="hint">A mechanic forgot their PIN. Reset sets it back to 1111 and clears their login lockout.</p>
+    @foreach (var r in Model.PinRequests)
+    {
+      <div class="log-row">
+        <span><b>@r.Username</b> — @r.Phone — @r.CreatedAt.ToString("dd.MM.yyyy HH:mm")</span>
+        <span class="amt">
+          <form method="post" asp-page-handler="ResetPin" class="inline-form">
+            <input type="hidden" name="RequestId" value="@r.Id" />
+            <button class="mini-btn" type="submit">Reset to 1111</button>
+          </form>
+        </span>
+      </div>
+    }
+  }
   <div class="scroll">
   @foreach (var u in Model.Users)
   {
