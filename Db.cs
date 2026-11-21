@@ -304,13 +304,21 @@ public static class AppDb
         return await r.ReadAsync() ? ReadUser(r) : null;
     }
 
+    /// <summary>Finds a user by phone. Two rows can share a phone (Han's
+    /// own number 09789423788 is on both "Hanmin Thein" approved and the
+    /// rejected "test" account), and without an ORDER BY Postgres returns
+    /// whichever row the plan finds first — so login could hit the
+    /// rejected duplicate and say "This account is rejected" (Han
+    /// 2026-11-21 16:09). Prefer an approved account, then pending,
+    /// then anything else, earliest first — the real account wins.</summary>
     public static async Task<UserRow?> FindUserByPhoneAsync(string phone)
     {
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE phone = @p", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE phone = @p " +
+            "ORDER BY CASE status WHEN 'approved' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, id LIMIT 1", conn);
         cmd.Parameters.AddWithValue("@p", phone.Trim());
         await using var r = await cmd.ExecuteReaderAsync();
         return await r.ReadAsync() ? ReadUser(r) : null;
