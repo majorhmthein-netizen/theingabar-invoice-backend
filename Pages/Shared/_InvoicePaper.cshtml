@@ -42,7 +42,12 @@
     </div>
   </div>
   <div class="inv-table-wrap">
-  <img class="inv-watermark" src="/img/theingabar-logo-watermark.jpg" alt="" aria-hidden="true" />
+  <div class="inv-watermark" aria-hidden="true">
+    <img src="/img/theingabar-logo-watermark.jpg" alt="" />
+    <span class="wm-shop">@Model.Meta.Shop</span>
+    <span class="wm-group">@Model.Meta.Group</span>
+    <span class="wm-id">id: @Model.No</span>
+  </div>
   <table class="inv-table">
     <thead>
       <tr><th style="width:28px">No.</th><th>Description</th><th class="amt">Amount (MMK)</th></tr>
@@ -66,10 +71,6 @@
       <div class="p-scan">Scan the QR code with KBZPay to pay.</div>
     </div>
     <img id="pQr" class="p-qr" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" crossorigin="anonymous" />
-  </div>
-  <div class="inv-sign">
-    <div class="sign-box"><div class="line"></div><div class="cap">Customer Signature</div></div>
-    <div class="sign-box"><div class="line"></div><div class="cap">Authorized Signature</div></div>
   </div>
   <div class="inv-thanks">
     <span class="en" id="pThanks">@Model.Meta.Thanks</span>
