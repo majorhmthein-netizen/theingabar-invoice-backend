@@ -1,17 +1,18 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 
+/// <summary>One earlier month's closing (လချုပ်) for the Home screen.</summary>
+public sealed record MonthSummary(string Ym, string Label, long Total, int Count);
+
 public class IndexModel : AppPageModel
 {
     private readonly IInvoiceStore _store;
     public IndexModel(IInvoiceStore store) => _store = store;
 
     public List<UserRow> Users { get; private set; } = new();
-    public List<InvoiceRow> Recent { get; private set; } = new();
-    public long WeekTotal { get; private set; }
+    public List<MonthSummary> Months { get; private set; } = new();
     public long MonthTotal { get; private set; }
-    public string WeekFrom { get; private set; } = "";
-    public string WeekTo { get; private set; } = "";
+    public string MonthYm { get; private set; } = "";
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -25,17 +26,33 @@ public class IndexModel : AppPageModel
         Users = (await AppDb.ListApprovedUsersAsync())
             .Where(u => !u.IsAdmin).ToList();
         var all = await _store.ListAsync();
-        Recent = all.Where(r => r.UserId is null || !adminIds.Contains(r.UserId))
-            .Take(10).ToList();
-        var (wf, wt) = AppDb.ThisWeek();
         var (mf, mt) = AppDb.ThisMonth();
-        WeekFrom = wf.ToString("yyyy-MM-dd");
-        WeekTo = wt.ToString("yyyy-MM-dd");
+        MonthYm = mf.ToString("yyyy-MM");
         // Income totals are mechanics-only too, so the totals match the
-        // invoices actually shown (same inclusive Mon–Sun / month ranges
-        // as PeriodTotalAsync, computed over the already-loaded list).
-        WeekTotal = TotalIn(all, wf, wt, adminIds);
+        // invoices actually shown (same inclusive month range as
+        // PeriodTotalAsync, computed over the already-loaded list).
         MonthTotal = TotalIn(all, mf, mt, adminIds);
+        // Previous months (လချုပ်, Han 2026-11-21): every earlier month
+        // that has a mechanics invoice, most recent first. The current
+        // month is reached from the This month income line, not here.
+        var byMonth = new Dictionary<string, (long Total, int Count)>();
+        foreach (var r in all)
+        {
+            if (r.UserId is not null && adminIds.Contains(r.UserId)) continue;
+            if (!DateOnly.TryParseExact(r.Date, "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) continue;
+            var ym = d.ToString("yyyy-MM");
+            if (ym == MonthYm) continue;
+            if (!byMonth.TryGetValue(ym, out var cur)) cur = (0, 0);
+            byMonth[ym] = (cur.Total + r.Total, cur.Count + 1);
+        }
+        Months = byMonth.Keys.OrderByDescending(k => k).Select(ym =>
+        {
+            var (y, m) = (int.Parse(ym[..4]), int.Parse(ym[5..7]));
+            var label = CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(m)
+                + " " + y;
+            return new MonthSummary(ym, label, byMonth[ym].Total, byMonth[ym].Count);
+        }).ToList();
         return Page();
     }
 

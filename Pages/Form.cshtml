@@ -28,6 +28,18 @@
       </tbody>
     </table>
     <label class="fld"><span>Deposit (စရံငွေ) (MMK)</span><input name="Deposit" value="@(Model.Deposit == 0 ? "" : Model.Deposit.ToString())" placeholder="0" inputmode="numeric" /></label>
+    <label class="fld"><span>Paper size</span><select name="PaperSize">
+      @if (Model.PaperSize == "Half")
+      {
+        <option value="A4">A4 (full page)</option>
+        <option value="Half" selected>Half-A4 (A4 တ၀က်စာ)</option>
+      }
+      else
+      {
+        <option value="A4" selected>A4 (full page)</option>
+        <option value="Half">Half-A4 (A4 တ၀က်စာ)</option>
+      }
+    </select></label>
     </div>
     @if (Model.Error is not null)
     {

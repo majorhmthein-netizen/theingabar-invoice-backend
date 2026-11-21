@@ -1,0 +1,28 @@
+@page "/month/{ym}"
+@model MonthModel
+@{
+    ViewData["Title"] = Model.Label;
+}
+<div class="panel panel-fill">
+  <h2>@Model.Label</h2>
+  <p class="hint">@Model.Rows.Count @(Model.Rows.Count == 1 ? "invoice" : "invoices") — Total @Paper.Fmt(Model.Total) MMK</p>
+  @* Month log saves as a PDF file (Han 2026-11-21) — not print. *@
+  <div class="row" style="margin-bottom:10px">
+    <a class="btn" href="/month/@(Model.Ym).pdf">Save as PDF</a>
+  </div>
+  <div class="scroll">
+  @if (Model.Rows.Count == 0)
+  {
+    <p class="hint">No invoices this month.</p>
+  }
+  @foreach (var inv in Model.Rows)
+  {
+    <div class="log-row" data-href="/invoice/@inv.Id">
+      <span class="log-no">@inv.No</span>
+      <span>@Paper.FmtDate(inv.Date)</span>
+      <span>@inv.Customer</span>
+      <span class="amt">@Paper.Fmt(inv.Total) MMK</span>
+    </div>
+  }
+  </div>
+</div>

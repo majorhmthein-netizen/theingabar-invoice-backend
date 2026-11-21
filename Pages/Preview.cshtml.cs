@@ -10,6 +10,7 @@ public class PreviewModel : AppPageModel
     public string Customer { get; private set; } = "";
     public List<InvoiceItem> Items { get; private set; } = new();
     public long Deposit { get; private set; }
+    public string PaperSize { get; private set; } = "A4";
     public int RowCount { get; private set; } = 5;
     public long? EditId { get; private set; }
     public string? Error { get; private set; }
@@ -23,6 +24,7 @@ public class PreviewModel : AppPageModel
         Items = Paper.ParseItems(f);
         Deposit = long.TryParse((f["Deposit"].FirstOrDefault() ?? "").Trim().Replace(",", ""),
             out var dep) ? Math.Max(0, dep) : 0;
+        PaperSize = f["PaperSize"].FirstOrDefault() == "Half" ? "Half" : "A4";
         RowCount = int.TryParse(f["RowCount"].FirstOrDefault(), out var rc)
             ? Math.Clamp(rc, 1, 20) : 5;
         EditId = long.TryParse(f["EditId"].FirstOrDefault(), out var eid) ? eid : null;
@@ -32,7 +34,7 @@ public class PreviewModel : AppPageModel
             // Preserve the draft across the redirect in TempData (cookie,
             // chunked) so the user does not lose what they typed.
             TempData["Draft"] = System.Text.Json.JsonSerializer.Serialize(
-                new DraftData(Date, Customer, Items, RowCount, EditId, Deposit));
+                new DraftData(Date, Customer, Items, RowCount, EditId, Deposit, PaperSize));
             TempData["FlashError"] = Error;
             return RedirectToPage("/Form");
         }
@@ -42,7 +44,7 @@ public class PreviewModel : AppPageModel
         // button from the issued invoice landed on it — Chrome "Confirm
         // Form Resubmission" / ERR_CACHE_MISS.)
         TempData["Draft"] = System.Text.Json.JsonSerializer.Serialize(
-            new DraftData(Date, Customer, Items, RowCount, EditId, Deposit));
+            new DraftData(Date, Customer, Items, RowCount, EditId, Deposit, PaperSize));
         return RedirectToPage("/Preview");
     }
     /// to /preview, the draft is kept in TempData, and the browser is
@@ -66,6 +68,7 @@ public class PreviewModel : AppPageModel
         Customer = draft.Customer;
         Items = draft.Items;
         Deposit = draft.Deposit;
+        PaperSize = draft.PaperSize;
         RowCount = draft.RowCount;
         EditId = draft.EditId;
         Error = Paper.ValidateDraft(Date, Customer, Items, Deposit);
@@ -88,7 +91,7 @@ public class PreviewModel : AppPageModel
         }
         var (payName, payNum, qrSrc) = Paper.PaymentFor(Me!.User, Meta!);
         PaperModel = new InvoicePaperModel(Meta!, payName, payNum, qrSrc,
-            Customer, Date, no, Items, Items.Sum(i => i.Amount), Deposit);
+            Customer, Date, no, Items, Items.Sum(i => i.Amount), Deposit, PaperSize);
         return Page();
     }
 }

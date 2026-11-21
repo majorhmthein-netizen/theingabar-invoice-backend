@@ -9,6 +9,7 @@ public class FormModel : AppPageModel
     public string Customer { get; private set; } = "";
     public List<InvoiceItem> Items { get; private set; } = new();
     public long Deposit { get; private set; }
+    public string PaperSize { get; private set; } = "A4";
     public int RowCount { get; private set; } = 5;
     public long? EditId { get; private set; }
     public string? Error { get; private set; }
@@ -21,6 +22,9 @@ public class FormModel : AppPageModel
         Items = Paper.ParseItems(f);
         Deposit = long.TryParse((f["Deposit"].FirstOrDefault() ?? "").Trim().Replace(",", ""),
             out var dep) ? Math.Max(0, dep) : 0;
+        // Paper size (Han 2026-11-21): chosen per invoice, A4 (full page)
+        // is the default; only the exact value "Half" means half-A4.
+        PaperSize = f["PaperSize"].FirstOrDefault() == "Half" ? "Half" : "A4";
         RowCount = int.TryParse(f["RowCount"].FirstOrDefault(), out var rc)
             ? Math.Clamp(rc, 1, 20) : 5;
         EditId = long.TryParse(f["EditId"].FirstOrDefault(), out var eid) ? eid : null;
@@ -47,6 +51,7 @@ public class FormModel : AppPageModel
                     Date = draft.Date;
                     Customer = draft.Customer;
                     Deposit = draft.Deposit;
+                    PaperSize = draft.PaperSize;
                     EditId = draft.EditId;
                     FillForRender(draft.Items, draft.RowCount);
                     return Page();
@@ -63,6 +68,7 @@ public class FormModel : AppPageModel
             Date = row.Date;
             Customer = row.Customer;
             Deposit = row.Deposit;
+            PaperSize = row.PaperSize;
             FillForRender(row.Items, Math.Max(5, row.Items.Count));
         }
         else
@@ -124,7 +130,7 @@ public class FormModel : AppPageModel
             if (existing is null) return NotFound();
             if (existing.UserId != Me!.User.LocalId && !Me.IsAdmin) return Forbid();
             var input = new InvoiceInput(existing.Uid, existing.No, existing.UserId,
-                existing.CreatedAt, Date.Trim(), Customer.Trim(), Items, total, Deposit);
+                existing.CreatedAt, Date.Trim(), Customer.Trim(), Items, total, Deposit, PaperSize);
             await _store.UpdateAsync(existing.Id, input);
             Flash($"Invoice {existing.No} saved.");
             return RedirectToPage("/Invoice", new { id = existing.Id });
@@ -132,11 +138,11 @@ public class FormModel : AppPageModel
         var created = await AppDb.CreateInvoiceNumberedAsync(new InvoiceInput(
             Guid.NewGuid().ToString(), null, Me!.User.LocalId,
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            Date.Trim(), Customer.Trim(), Items, total, Deposit));
+            Date.Trim(), Customer.Trim(), Items, total, Deposit, PaperSize));
         Flash($"Invoice {created.No} saved.");
         return RedirectToPage("/Invoice", new { id = created.Id });
     }
 }
 
 /// <summary>Draft round-tripped between Form and Preview via TempData.</summary>
-public sealed record DraftData(string Date, string Customer, List<InvoiceItem> Items, int RowCount, long? EditId, long Deposit = 0);
+public sealed record DraftData(string Date, string Customer, List<InvoiceItem> Items, int RowCount, long? EditId, long Deposit = 0, string PaperSize = "A4");

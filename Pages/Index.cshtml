@@ -23,25 +23,28 @@
 
 <div class="panel">
   <h2>Income</h2>
-  <div class="totals-line"><span>This week (@Paper.FmtDate(Model.WeekFrom) – @Paper.FmtDate(Model.WeekTo))</span><span>@Paper.Fmt(Model.WeekTotal) MMK</span></div>
-  <div class="totals-line"><span>This month</span><span>@Paper.Fmt(Model.MonthTotal) MMK</span></div>
+  @* This month taps through to this month's log (Han 2026-11-21).
+     This week is gone; Recent invoices is gone. *@
+  <div class="log-row" data-href="/month/@Model.MonthYm">
+    <span><b>This month</b></span>
+    <span class="amt">@Paper.Fmt(Model.MonthTotal) MMK</span>
+  </div>
 </div>
 </div>
 
 <div class="panel panel-fill">
-  <h2>Recent invoices</h2>
+  <h2>Previous months</h2>
   <div class="scroll">
-  @if (Model.Recent.Count == 0)
+  @if (Model.Months.Count == 0)
   {
-    <p class="hint">No invoices yet.</p>
+    <p class="hint">No earlier months yet.</p>
   }
-  @foreach (var inv in Model.Recent)
+  @foreach (var m in Model.Months)
   {
-    <div class="log-row" data-href="/invoice/@inv.Id">
-      <span class="log-no">@inv.No</span>
-      <span>@Paper.FmtDate(inv.Date)</span>
-      <span>@inv.Customer</span>
-      <span class="amt">@Paper.Fmt(inv.Total) MMK</span>
+    <div class="log-row" data-href="/month/@m.Ym">
+      <span class="log-no">@m.Label</span>
+      <span>@m.Count @(m.Count == 1 ? "invoice" : "invoices")</span>
+      <span class="amt">@Paper.Fmt(m.Total) MMK</span>
     </div>
   }
   </div>
