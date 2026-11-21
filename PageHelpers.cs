@@ -18,6 +18,11 @@ public abstract class AppPageModel : PageModel
         Me = await Auth.CurrentUserAsync(HttpContext);
         ViewData["Meta"] = Meta;
         ViewData["Me"] = Me;
+        // Header notification badge (Han 2026-11-21, v34): the logged-in
+        // user's active notifications (unread admin messages + unpaid
+        // invoice reminders). 0 when logged out or the DB is down.
+        ViewData["NotiCount"] = Me is not null && AppDb.Available
+            ? await AppDb.CountActiveNotificationsAsync(Me.User.Id) : 0;
     }
 
     /// <summary>Redirects to /dberror when Postgres is unavailable

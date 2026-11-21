@@ -64,7 +64,9 @@ public static class AppDb
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) continue;
             if (d.Year != y || d.Month != m) continue;
             rows.Add(r);
-            total += r.Total;
+            // Month total (လချုပ်) counts PAID invoices only (Han 2026-11-21,
+            // v34): a Not-yet invoice is money still owed, not income.
+            if (r.PaymentStatus == "paid") total += r.Total;
         }
         rows.Sort((a, b) => string.Compare(b.Date, a.Date, StringComparison.Ordinal) is var c && c != 0
             ? c : b.Id.CompareTo(a.Id));
@@ -175,6 +177,32 @@ public static class AppDb
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 resolved_at TIMESTAMPTZ,
                 resolved_by TEXT
+            )
+            """);
+        // Payment status (Han 2026-11-21, v34): "paid" or "not_yet" per
+        // invoice. The live table predates it, so add the column if missing
+        // (default 'paid' — old invoices keep counting into month totals
+        // and raise no reminders).
+        await ExecAsync(conn,
+            "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'paid'");
+        // Notifications (Han 2026-11-21, v34): per-user notifications.
+        // kind 'invoice' = a Not-yet invoice reminder ("Customer ထံမှ
+        // xxxks ရန်ကျန်ရှိနေပါသည်။", 3-day remind_at, resolved when the
+        // invoice is marked Paid); kind 'admin' = a message the admin
+        // sent to this user from the admin panel (resolved when read).
+        // Deleting a user removes their notifications (CASCADE).
+        await ExecAsync(conn, """
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,
+                title TEXT NOT NULL,
+                invoice_id BIGINT,
+                invoice_no TEXT,
+                remind_at TIMESTAMPTZ,
+                read_at TIMESTAMPTZ,
+                resolved_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
             )
             """);
         await SeedAsync(conn);
@@ -495,6 +523,128 @@ public static class AppDb
         cmd.Parameters.AddWithValue("@u", localId);
         return Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
     }
+
+    /// <summary>Sets an invoice's payment status ("paid" / "not_yet").</summary>
+    public static async Task SetInvoicePaymentStatusAsync(long invoiceId, string status)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE invoices SET payment_status = @s, updated_at = now() WHERE id = @id", conn);
+        cmd.Parameters.AddWithValue("@s", status == "not_yet" ? "not_yet" : "paid");
+        cmd.Parameters.AddWithValue("@id", invoiceId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    // --- notifications (Han 2026-11-21, v34) ---
+    /// <summary>One notification for a user. kind 'invoice' = a Not-yet
+    /// invoice reminder (resolved when the invoice is marked Paid);
+    /// kind 'admin' = a message the admin sent (resolved when read).</summary>
+    public sealed record NotificationRow(
+        int Id, int UserId, string Kind, string Title,
+        long? InvoiceId, string? InvoiceNo, DateTime? RemindAt,
+        DateTime? ReadAt, DateTime? ResolvedAt, DateTime CreatedAt);
+
+    /// <summary>Creates a notification. Returns its id.</summary>
+    public static async Task<int> CreateNotificationAsync(int userId, string kind, string title,
+        long? invoiceId, string? invoiceNo, DateTime? remindAt)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "INSERT INTO notifications (user_id, kind, title, invoice_id, invoice_no, remind_at) " +
+            "VALUES (@u,@k,@t,@inv,@no,@rem) RETURNING id", conn);
+        cmd.Parameters.AddWithValue("@u", userId);
+        cmd.Parameters.AddWithValue("@k", kind);
+        cmd.Parameters.AddWithValue("@t", title);
+        cmd.Parameters.AddWithValue("@inv", (object?)invoiceId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@no", (object?)invoiceNo ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@rem", (object?)remindAt ?? DBNull.Value);
+        return (int)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    /// <summary>True when this invoice already has an active reminder.</summary>
+    public static async Task<bool> HasActiveInvoiceNotificationAsync(long invoiceId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT COUNT(*) FROM notifications WHERE invoice_id = @id AND kind = 'invoice' AND resolved_at IS NULL", conn);
+        cmd.Parameters.AddWithValue("@id", invoiceId);
+        return Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
+    }
+
+    /// <summary>Resolves (hides) an invoice's reminder — used when the
+    /// invoice is marked Paid (Han 2026-11-21: "Paid ရင် noti ပျောက်").</summary>
+    public static async Task ResolveInvoiceNotificationAsync(long invoiceId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE notifications SET resolved_at = now() WHERE invoice_id = @id AND kind = 'invoice' AND resolved_at IS NULL", conn);
+        cmd.Parameters.AddWithValue("@id", invoiceId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Marks this user's admin messages as read (opening the
+    /// notifications page clears them from the badge; invoice reminders
+    /// stay until the invoice is Paid).</summary>
+    public static async Task MarkAdminNotificationsReadAsync(int userId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE notifications SET read_at = now() WHERE user_id = @u AND kind = 'admin' AND read_at IS NULL", conn);
+        cmd.Parameters.AddWithValue("@u", userId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Active notifications for the header badge: unread admin
+    /// messages + unresolved invoice reminders (money still owed).</summary>
+    public static async Task<int> CountActiveNotificationsAsync(int userId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT COUNT(*) FROM notifications WHERE user_id = @u AND resolved_at IS NULL " +
+            "AND (kind = 'invoice' OR read_at IS NULL)", conn);
+        cmd.Parameters.AddWithValue("@u", userId);
+        return (int)Convert.ToInt64(await cmd.ExecuteScalarAsync());
+    }
+
+    /// <summary>All of a user's notifications, active first, newest first.</summary>
+    public static async Task<List<NotificationRow>> ListNotificationsAsync(int userId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT id, user_id, kind, title, invoice_id, invoice_no, remind_at, read_at, resolved_at, created_at " +
+            "FROM notifications WHERE user_id = @u ORDER BY (resolved_at IS NULL) DESC, created_at DESC", conn);
+        cmd.Parameters.AddWithValue("@u", userId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        var list = new List<NotificationRow>();
+        while (await r.ReadAsync())
+        {
+            list.Add(new NotificationRow(
+                r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetInt64(4),
+                r.IsDBNull(5) ? null : r.GetString(5),
+                r.IsDBNull(6) ? null : r.GetDateTime(6),
+                r.IsDBNull(7) ? null : r.GetDateTime(7),
+                r.IsDBNull(8) ? null : r.GetDateTime(8),
+                r.GetDateTime(9)));
+        }
+        return list;
+    }
+
+    /// <summary>Remaining amount in Han's "xxxks" form: whole thousands
+    /// as "1304ks", a fractional thousand as "1304.5ks", under a thousand
+    /// as the plain MMK amount.</summary>
+    public static string KsText(long amount)
+    {
+        if (amount >= 1000 && amount % 1000 == 0) return (amount / 1000) + "ks";
+        if (amount >= 1000)
+            return (amount / 1000.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "ks";
+        return amount + " MMK";
+    }
+
+    /// <summary>The invoice-reminder text (Han 2026-11-21): "Customer name
+    /// ထံမှ xxxks ရန်ကျန်ရှိနေပါသည်။" — remaining = Total − Deposit.</summary>
+    public static string ReminderText(string customer, long remaining) =>
+        customer + " ထံမှ " + KsText(remaining) + " ရန်ကျန်ရှိနေပါသည်။";
 
     public static async Task UpdateUserTemplateAsync(int id, string? kbzName, string? kbzNumber,
         byte[]? qr, string? qrType)
@@ -855,9 +1005,9 @@ public static class AppDb
                 // by using a raw insert here (same columns as PostgresStore).
                 var itemsJson = System.Text.Json.JsonSerializer.Serialize(withNo.Items, Shared.JsonOpts);
                 await using var ins = new NpgsqlCommand(
-                    "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size) " +
-                    "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items::jsonb,@total,@deposit,@paperSize) " +
-                    "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, created_at, updated_at",
+                    "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, payment_status) " +
+                    "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items::jsonb,@total,@deposit,@paperSize,@payStatus) " +
+                    "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, created_at, updated_at, payment_status",
                     conn, tx);
                 ins.Parameters.AddWithValue("@uid", withNo.Uid);
                 ins.Parameters.AddWithValue("@no", no);
@@ -869,6 +1019,7 @@ public static class AppDb
                 ins.Parameters.AddWithValue("@total", checked((int)withNo.Total));
                 ins.Parameters.AddWithValue("@deposit", checked((int)withNo.Deposit));
                 ins.Parameters.AddWithValue("@paperSize", withNo.PaperSize == "Half" ? "Half" : "A4");
+                ins.Parameters.AddWithValue("@payStatus", withNo.PaymentStatus == "not_yet" ? "not_yet" : "paid");
                 await using var r = await ins.ExecuteReaderAsync();
                 await r.ReadAsync();
                 var row = ReadInvoiceRow(r);
@@ -925,13 +1076,16 @@ public static class AppDb
             r.GetString(5), r.GetString(6), items, r.GetInt32(8),
             r.IsDBNull(9) ? 0 : r.GetInt32(9),
             r.IsDBNull(10) ? "A4" : r.GetString(10),
-            Shared.FormatTs(r.GetDateTime(11)), Shared.FormatTs(r.GetDateTime(12)));
+            Shared.FormatTs(r.GetDateTime(11)), Shared.FormatTs(r.GetDateTime(12)),
+            r.IsDBNull(13) ? "paid" : r.GetString(13));
     }
 
     public static async Task<long> PeriodTotalAsync(DateOnly from, DateOnly to, string? userLocalId)
     {
         await using var conn = await DataSource!.OpenConnectionAsync();
-        var sql = "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date >= @f AND date <= @t";
+        // Month income counts PAID invoices only (Han 2026-11-21, v34:
+        // a Not-yet invoice is money still owed, not income received).
+        var sql = "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date >= @f AND date <= @t AND payment_status = 'paid'";
         if (userLocalId is not null) sql += " AND user_id = @u";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@f", Iso(from));
