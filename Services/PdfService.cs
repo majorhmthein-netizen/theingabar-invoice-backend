@@ -58,6 +58,25 @@ public static class PdfService
         return null;
     }
 
+    static byte[]? _watermarkBytes;
+    static byte[]? WatermarkBytes()
+    {
+        // Faint logo for the watermark behind the items table (Han 2026-11-21).
+        // The file itself is pre-faded to ~10% so the text stays readable
+        // and it costs almost no ink. Returns null when missing (table alone).
+        if (_watermarkBytes is not null) return _watermarkBytes;
+        foreach (var baseDir in new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "wwwroot", "img"),
+            Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img"),
+        })
+        {
+            var p = Path.Combine(baseDir, "theingabar-logo-watermark.jpg");
+            if (File.Exists(p)) return _watermarkBytes = File.ReadAllBytes(p);
+        }
+        return null;
+    }
+
     static void EnsureFonts()
     {
         lock (_fontGate)
@@ -123,6 +142,12 @@ public static class PdfService
 
         var doc = Document.Create(container =>
         {
+            // Items-table size tier (Han 2026-11-21): few items keep the
+            // default/max size; 11–15 shrink a step; 16–20 shrink most,
+            // so a full 20-item invoice still fits on one A4 page.
+            var tier = Paper.ItemTier(row.Items.Count);
+            var itemSize = tier == 2 ? 8.8f : tier == 1 ? 9.8f : 10.9f;
+            var cellPadV = tier == 2 ? 4 : tier == 1 ? 5 : 6;
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
@@ -190,14 +215,19 @@ public static class PdfService
                         });
                     });
 
-                    // --- items table (navy header) ---
-                    col.Item().PaddingTop(14).Table(t =>
+                    // --- items table (navy header) + faint logo watermark behind it ---
+                    col.Item().PaddingTop(14).Layers(layers =>
+                    {
+                        var wm = WatermarkBytes();
+                        if (wm is not null)
+                            layers.Layer().AlignCenter().AlignMiddle().Width(260).Image(wm).FitArea();
+                        layers.PrimaryLayer().Table(t =>
                     {
                         t.ColumnsDefinition(cd =>
                         {
-                            cd.ConstantColumn(38);
+                            cd.ConstantColumn(34);
                             cd.RelativeColumn();
-                            cd.ConstantColumn(110);
+                            cd.ConstantColumn(100);
                         });
                         t.Header(h =>
                         {
@@ -211,13 +241,13 @@ public static class PdfService
                         for (var i = 0; i < row.Items.Count; i++)
                         {
                             var it = row.Items[i];
-                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6).PaddingHorizontal(8)
-                                .Text((i + 1).ToString()).Style(Myanmar(10.9f, 400, "#7b8a99"));
-                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6).PaddingHorizontal(8)
+                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(cellPadV).PaddingHorizontal(8)
+                                .Text((i + 1).ToString()).Style(Myanmar(itemSize, 400, "#7b8a99"));
+                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(cellPadV).PaddingHorizontal(8)
                                 .Text(string.IsNullOrWhiteSpace(it.Desc) ? "—" : it.Desc)
-                                .Style(Myanmar(10.9f, 300, "#000000")).LineHeight(1.55f);
-                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(6).PaddingHorizontal(8)
-                                .AlignRight().Text(Paper.Fmt(it.Amount)).Style(Myanmar(10.9f, 700, "#000000"));
+                                .Style(Myanmar(itemSize, 300, "#000000")).LineHeight(1.55f);
+                            t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(cellPadV).PaddingHorizontal(8)
+                                .AlignRight().Text(Paper.Fmt(it.Amount)).Style(Myanmar(itemSize, 700, "#000000"));
                         }
                         t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
                             .Text("");
@@ -225,6 +255,7 @@ public static class PdfService
                             .Text("Total (MMK)").Style(Myanmar(12.4f, 800, "#14202e"));
                         t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
                             .AlignRight().Text(Paper.Fmt(row.Total)).Style(Myanmar(12.4f, 800, "#0b5394"));
+                        });
                     });
 
                     // --- payment box + QR ---
