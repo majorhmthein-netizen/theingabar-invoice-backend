@@ -44,7 +44,6 @@
       <legend>Payment</legend>
       <label><input type="radio" name="PaymentStatus" value="paid" @(Model.PaymentStatus == "not_yet" ? "" : "checked") /> Paid</label>
       <label><input type="radio" name="PaymentStatus" value="not_yet" @(Model.PaymentStatus == "not_yet" ? "checked" : "") /> Not yet</label>
-      <span class="hint">Not yet raises a reminder — "Customer ထံမှ xxxks ရန်ကျန်ရှိနေပါသည်။" — until it is marked Paid.</span>
     </fieldset>
     </div>
     @if (Model.Error is not null)
