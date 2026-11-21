@@ -1,0 +1,22 @@
+@page
+@model ForgotPinModel
+@{
+    ViewData["Title"] = "Forgot PIN";
+}
+<div class="panel">
+  <h2>Forgot PIN</h2>
+  <p class="hint">Send a PIN reset request to the admin. The admin resets your PIN to 1111 — then log in with 1111 and change it if you like.</p>
+  <form method="post">
+    <label class="fld"><span>Phone</span><input name="Phone" value="@Model.Phone" required inputmode="tel" autocomplete="tel" placeholder="09…" /></label>
+    @if (Model.Error is not null)
+    {
+      <p class="field-error">@Model.Error</p>
+    }
+    @if (Model.Message is not null)
+    {
+      <p class="ok">@Model.Message</p>
+    }
+    <button class="btn" type="submit">Request PIN reset</button>
+  </form>
+  <p class="hint"><a href="/login">Back to Log in</a></p>
+</div>
