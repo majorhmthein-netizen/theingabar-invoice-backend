@@ -244,6 +244,19 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .log-row[data-href] { cursor: pointer; }
 .log-row[data-href]:active { background: #eef3f8; }
 .log-row .amt { margin-left: auto; font-weight: 700; color: var(--black); }
+/* --- user row action menu (Han 2026-11-21) --- */
+/* No pile of buttons: tap (or hover) the account to open a menu list. */
+.user-menu { border-bottom: 1px solid #e6ebf0; }
+.user-menu > summary { list-style: none; cursor: pointer; border-bottom: 0; }
+.user-menu > summary::-webkit-details-marker { display: none; }
+.user-menu > summary::after { content: "▾"; margin-left: auto; color: var(--muted); }
+.user-actions { display: none; flex-direction: column; gap: 6px; padding: 4px 8px 12px; }
+.user-menu[open ] .user-actions { display: flex; }
+.user-menu:hover .user-actions { display: flex; }
+.user-actions .inline-form { display: block; }
+.user-actions .mini-btn { justify-content: flex-start; }
+.mini-btn.danger { background: #a83232; box-shadow: 0 2px 6px rgba(168, 50, 50, .25); }
+.mini-btn.danger:hover { background: #8f2b2b; box-shadow: 0 6px 14px rgba(168, 50, 50, .3); }
 .log-no { font-weight: 700; color: var(--navy); }
 .ok { color: #1e7a34; font-weight: 700; }
 .totals-line {
