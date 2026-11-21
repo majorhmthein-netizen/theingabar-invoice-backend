@@ -13,7 +13,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b5394" />
+<meta name="theme-color" content="#141f3d" />
 <title>@(title is null ? shop : title + " — " + shop)</title>
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="stylesheet" href="/css/fonts.css" />
@@ -23,7 +23,7 @@
 </head>
 <body data-auth="@(me is null ? "logged-out" : "logged-in")">
 <header class="toolbar">
-  <a class="t-title" href="/"><span class="dot" aria-hidden="true"></span>@shop</a>
+  <a class="t-title" href="/"><img class="t-logo" src="/img/theingabar-wordmark.png" alt="@shop" /></a>
   <span class="toolbar-sp"></span>
   @if (me is null)
   {
