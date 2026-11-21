@@ -39,7 +39,6 @@
       .inv-custbox .v{font-weight:700;font-size:19px;line-height:1.5}
       .inv-custdate{text-align:right}
       .inv-custdate .v{font-variant-numeric:tabular-nums}
-      .inv-curr{display:block;font-size:14px;color:#5b6a7a;margin-top:4px}
       table.inv-table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14.5px;position:relative;z-index:1}
       table.inv-table th{
         text-align:left;background:#14202e;color:#ffffff;
@@ -87,8 +86,9 @@
       .invoice.inv-c1 table.inv-table th{padding-top:8px;padding-bottom:8px}
       .invoice.inv-c1 table.inv-table td{padding-top:8px;padding-bottom:8px}
       .invoice.inv-c1 tr.inv-total td{padding-top:8px}
-      .invoice.inv-c1 .inv-paybox{margin-top:12px;padding:12px 18px}
-      .invoice.inv-c1 .inv-paybox img.p-qr{width:102px;height:102px}
+      .invoice.inv-c1 tr.inv-final td{padding-top:8px}
+      .invoice.inv-c1 .inv-qr{margin-top:12px}
+      .invoice.inv-c1 .inv-qr img.p-qr{width:102px;height:102px}
       .invoice.inv-c1 .inv-thanks{margin-top:20px;padding-top:10px}
       .invoice.inv-c2{padding-top:18px;padding-bottom:14px}
       .invoice.inv-c2 .inv-logo{height:48px}
@@ -100,8 +100,9 @@
       .invoice.inv-c2 table.inv-table th{padding-top:7px;padding-bottom:7px}
       .invoice.inv-c2 table.inv-table td{padding-top:7px;padding-bottom:7px}
       .invoice.inv-c2 tr.inv-total td{padding-top:7px}
-      .invoice.inv-c2 .inv-paybox{margin-top:10px;padding:10px 18px}
-      .invoice.inv-c2 .inv-paybox img.p-qr{width:85px;height:85px}
+      .invoice.inv-c2 tr.inv-final td{padding-top:7px}
+      .invoice.inv-c2 .inv-qr{margin-top:10px}
+      .invoice.inv-c2 .inv-qr img.p-qr{width:85px;height:85px}
       .invoice.inv-c2 .inv-thanks{margin-top:14px;padding-top:8px}
       .invoice.inv-c3{padding-top:16px;padding-bottom:12px}
       .invoice.inv-c3 .inv-logo{height:42px}
@@ -113,8 +114,9 @@
       .invoice.inv-c3 table.inv-table th{padding-top:6px;padding-bottom:6px}
       .invoice.inv-c3 table.inv-table td{padding-top:6px;padding-bottom:6px}
       .invoice.inv-c3 tr.inv-total td{padding-top:6px}
-      .invoice.inv-c3 .inv-paybox{margin-top:8px;padding:8px 18px}
-      .invoice.inv-c3 .inv-paybox img.p-qr{width:85px;height:85px}
+      .invoice.inv-c3 tr.inv-final td{padding-top:6px}
+      .invoice.inv-c3 .inv-qr{margin-top:8px}
+      .invoice.inv-c3 .inv-qr img.p-qr{width:85px;height:85px}
       .invoice.inv-c3 .inv-thanks{margin-top:8px;padding-top:6px}
       .invoice.inv-c4{padding-top:14px;padding-bottom:10px}
       .invoice.inv-c4 .inv-logo{height:37px}
@@ -126,25 +128,26 @@
       .invoice.inv-c4 table.inv-table th{padding-top:5px;padding-bottom:5px}
       .invoice.inv-c4 table.inv-table td{padding-top:5px;padding-bottom:5px}
       .invoice.inv-c4 tr.inv-total td{padding-top:5px}
-      .invoice.inv-c4 .inv-paybox{margin-top:5px;padding:7px 18px}
-      .invoice.inv-c4 .inv-paybox img.p-qr{width:85px;height:85px}
+      .invoice.inv-c4 tr.inv-final td{padding-top:5px}
+      .invoice.inv-c4 .inv-qr{margin-top:5px}
+      .invoice.inv-c4 .inv-qr img.p-qr{width:85px;height:85px}
       .invoice.inv-c4 .inv-thanks{margin-top:7px;padding-top:5px}
       tr.inv-total td{
         border-bottom:none;border-top:2px solid #14202e;padding:12px 10px 4px;
         font-weight:800;font-size:16.5px;
       }
       tr.inv-total td.amt{color:#0b5394}
-      .inv-paybox{
-        display:flex;gap:20px;align-items:center;justify-content:space-between;
-        border:1px solid #dfe5ec;border-radius:6px;margin-top:18px;padding:16px 18px;flex-wrap:wrap;
+      /* Deposit row (Han 2026-11-21): plain row under Total; the Final
+         Total row below it is bold like Total — it is the amount to pay. */
+      tr.inv-final td{
+        border-bottom:none;border-top:2px solid #14202e;padding:12px 10px 4px;
+        font-weight:800;font-size:16.5px;
       }
-      .inv-paybox .p-k{font-family:"Archivo",sans-serif;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#5b6a7a;margin-bottom:6px;font-weight:700}
-      .inv-paybox .p-line{font-size:15px;line-height:1.65;color:#14202e}
-      .inv-paybox .p-name{font-weight:800;color:#0b5394}
-      .inv-paybox .p-num{font-weight:700;color:#0b5394;font-variant-numeric:tabular-nums}
-      .inv-paybox .p-payname{font-weight:700;color:#0b5394}
-      .inv-paybox .p-scan{font-size:14px;color:#5b6a7a;margin-top:4px}
-      .inv-paybox img.p-qr{width:130px;height:130px;padding:6px;box-sizing:border-box;border:1px solid #dfe5ec;border-radius:6px;background:#fff;display:block;flex:none}
+      tr.inv-final td.amt{color:#0b5394}
+      /* QR alone (Han 2026-11-21): the payment box is gone; only the QR
+         stays, centred under the table. */
+      .inv-qr{display:flex;justify-content:center;margin-top:18px}
+      .inv-qr img.p-qr{width:130px;height:130px;padding:6px;box-sizing:border-box;border:1px solid #dfe5ec;border-radius:6px;background:#fff;display:block;flex:none}
       .inv-thanks{text-align:center;margin-top:30px;border-top:1px solid #dfe5ec;padding-top:16px}
       .inv-thanks .en{display:block;font-family:"Archivo",sans-serif;font-weight:700;font-size:15px;color:#0b5394;letter-spacing:.02em}
       .inv-thanks-group{display:block;margin-top:4px;font-size:14px;color:#5b6a7a;font-weight:600}
@@ -153,7 +156,7 @@
         .inv-logo{height:56px}
         .inv-word{font-size:22px}
         .inv-custdate{text-align:left}
-        .inv-paybox img.p-qr{width:112px;height:112px}
+        .inv-qr img.p-qr{width:112px;height:112px}
       }
       /* Print page (Han 2026-11-21: Save as PDF came out 2 pages — the dialog
          used Letter, shorter than A4, and the last thanks line spilled):
