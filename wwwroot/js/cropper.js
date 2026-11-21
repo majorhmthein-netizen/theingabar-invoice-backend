@@ -15,6 +15,11 @@
  * stay scannable in the printed invoice); avatar uses 128 (shown at
  * 28px in the toolbar and 64px on the profile page). Default 512.
  * A photo that can't be read clears the pick silently.
+ *
+ * data-cache (optional) = localStorage key to keep the cropped image
+ * under, so the picture loads from the phone (front end) instead of
+ * the server (Han 2026-11-21: profile photos on the front end so they
+ * load fast). Only the avatar input carries it; the QR does not.
  */
 (function () {
   'use strict';
@@ -40,6 +45,12 @@
         var ctx = canvas.getContext('2d');
         ctx.drawImage(img, sx, sy, s, s, 0, 0, out, out);
         URL.revokeObjectURL(objectUrl);
+        // Front-end copy (Han 2026-11-21): keep the cropped picture on
+        // the phone, so it loads instantly instead of from the server.
+        try {
+          var cacheKey = input.getAttribute('data-cache');
+          if (cacheKey) localStorage.setItem(cacheKey, canvas.toDataURL('image/png'));
+        } catch (e) { /* storage full or private mode — the server copy still works */ }
         canvas.toBlob(function (blob) {
           if (!blob) { input.value = ''; return; }
           var dt = new DataTransfer();
