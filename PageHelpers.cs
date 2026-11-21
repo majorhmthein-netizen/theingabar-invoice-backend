@@ -131,6 +131,13 @@ public static class Paper
         return items;
     }
 
+    /// <summary>Items-table size tier (Han 2026-11-21): 0 = up to 10 items
+    /// (the default/max size — few items never grow past it), 1 = 11–15
+    /// items, 2 = 16–20 items (smallest, so a full 20-item invoice still
+    /// fits on one page). Shared by the HTML paper (_InvoicePaper) and
+    /// the PDF (PdfService) so both shrink identically.</summary>
+    public static int ItemTier(int count) => count >= 16 ? 2 : count >= 11 ? 1 : 0;
+
     /// <summary>Validates a parsed invoice (same rules as the /api server
     /// validation). Returns an error string or null.</summary>
     public static string? ValidateDraft(string? date, string? customer, List<InvoiceItem> items)
