@@ -83,8 +83,8 @@
       .invoice.inv-c1 table.inv-table td{padding-top:8px;padding-bottom:8px}
       .invoice.inv-c1 tr.inv-total td{padding-top:8px}
       .invoice.inv-c1 tr.inv-final td{padding-top:8px}
-      .invoice.inv-c1 .inv-qr{margin-top:12px}
-      .invoice.inv-c1 .inv-qr img.p-qr{width:102px;height:102px}
+      .invoice.inv-c1 .inv-pay{margin-top:12px;padding:10px 14px}
+      .invoice.inv-c1 .inv-pay img.p-qr{width:102px;height:102px}
       .invoice.inv-c1 .inv-thanks{margin-top:20px;padding-top:10px}
       .invoice.inv-c2{padding-top:18px;padding-bottom:14px}
       .invoice.inv-c2 .inv-logo{height:60px}
@@ -97,8 +97,8 @@
       .invoice.inv-c2 table.inv-table td{padding-top:7px;padding-bottom:7px}
       .invoice.inv-c2 tr.inv-total td{padding-top:7px}
       .invoice.inv-c2 tr.inv-final td{padding-top:7px}
-      .invoice.inv-c2 .inv-qr{margin-top:10px}
-      .invoice.inv-c2 .inv-qr img.p-qr{width:85px;height:85px}
+      .invoice.inv-c2 .inv-pay{margin-top:10px;padding:8px 12px}
+      .invoice.inv-c2 .inv-pay img.p-qr{width:85px;height:85px}
       .invoice.inv-c2 .inv-thanks{margin-top:14px;padding-top:8px}
       .invoice.inv-c3{padding-top:16px;padding-bottom:12px}
       .invoice.inv-c3 .inv-logo{height:52px}
@@ -111,8 +111,8 @@
       .invoice.inv-c3 table.inv-table td{padding-top:6px;padding-bottom:6px}
       .invoice.inv-c3 tr.inv-total td{padding-top:6px}
       .invoice.inv-c3 tr.inv-final td{padding-top:6px}
-      .invoice.inv-c3 .inv-qr{margin-top:8px}
-      .invoice.inv-c3 .inv-qr img.p-qr{width:85px;height:85px}
+      .invoice.inv-c3 .inv-pay{margin-top:8px;padding:8px 12px}
+      .invoice.inv-c3 .inv-pay img.p-qr{width:85px;height:85px}
       .invoice.inv-c3 .inv-thanks{margin-top:8px;padding-top:6px}
       .invoice.inv-c4{padding-top:14px;padding-bottom:10px}
       .invoice.inv-c4 .inv-logo{height:46px}
@@ -125,8 +125,8 @@
       .invoice.inv-c4 table.inv-table td{padding-top:5px;padding-bottom:5px}
       .invoice.inv-c4 tr.inv-total td{padding-top:5px}
       .invoice.inv-c4 tr.inv-final td{padding-top:5px}
-      .invoice.inv-c4 .inv-qr{margin-top:5px}
-      .invoice.inv-c4 .inv-qr img.p-qr{width:85px;height:85px}
+      .invoice.inv-c4 .inv-pay{margin-top:5px;padding:6px 10px}
+      .invoice.inv-c4 .inv-pay img.p-qr{width:85px;height:85px}
       .invoice.inv-c4 .inv-thanks{margin-top:7px;padding-top:5px}
       tr.inv-total td{
         border-bottom:none;border-top:2px solid #14202e;padding:12px 10px 4px;
@@ -142,8 +142,17 @@
       tr.inv-final td.amt{color:#0b5394}
       /* QR alone (Han 2026-11-21): the payment box is gone; only the QR
          stays, centred under the table. */
-      .inv-qr{display:flex;justify-content:center;margin-top:18px}
-      .inv-qr img.p-qr{width:130px;height:130px;padding:6px;box-sizing:border-box;border:1px solid #dfe5ec;border-radius:6px;background:#fff;display:block;flex:none}
+      /* Payment box (Han 2026-11-21, restored from the 60214 layout):
+         the KBZ Pay name/number + QR, so the customer sees who to pay —
+         but WITHOUT the "PAYMENT" heading, and the "Scan the QR" line
+         moved ABOVE the phone-number line. The box is a row: text on
+         the left, QR on the right. */
+      .inv-pay{display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid #dfe5ec;border-radius:6px;padding:12px 16px;margin-top:18px}
+      .inv-pay-text{display:flex;flex-direction:column;gap:8px;min-width:0}
+      .inv-pay-scan{font-size:14px;color:#5b6a7a}
+      .inv-pay-line{font-size:15px;color:#14202e}
+      .inv-pay-line b{color:#0b5394}
+      .inv-pay img.p-qr{width:120px;height:120px;padding:4px;box-sizing:border-box;border:1px solid #dfe5ec;border-radius:6px;background:#fff;display:block;flex:none}
       .inv-thanks{text-align:center;margin-top:30px;border-top:1px solid #dfe5ec;padding-top:16px}
       .inv-thanks .en{display:block;font-family:"Archivo",sans-serif;font-weight:700;font-size:15px;color:#0b5394;letter-spacing:.02em}
       .inv-thanks-group{display:block;margin-top:4px;font-size:14px;color:#5b6a7a;font-weight:600}
@@ -152,7 +161,7 @@
         .inv-logo{height:70px}
         .inv-word{font-size:22px}
         .inv-custdate{text-align:left}
-        .inv-qr img.p-qr{width:112px;height:112px}
+        .inv-pay img.p-qr{width:112px;height:112px}
       }
       /* Print page (Han 2026-11-21: Save as PDF came out 2 pages — the dialog
          used Letter, shorter than A4, and the last thanks line spilled):
@@ -185,7 +194,7 @@
         .wrap{height:100%; display:block; padding:0}
         .scroll{height:100%; overflow:visible}
         .invoice{display:flex; flex-direction:column; min-height:100%}
-        .inv-qr{margin-top:auto}
+        .inv-pay{margin-top:auto}
         .pages{display:block; overflow:visible}
         .page{display:block !important}
         .page>.panel{overflow:visible}
