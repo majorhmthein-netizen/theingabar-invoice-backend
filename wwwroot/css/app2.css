@@ -285,7 +285,7 @@ table.items input:focus { border-color: var(--navy); outline: none; box-shadow: 
 /* --- print: the paper page prints cleanly via the frozen print CSS --- */
 @media print {
   body { overflow: visible; background: #fff; }
-  .toolbar, .tabbar, .no-print { display: none !important; }
+  .toolbar, .tabbar, .no-print, .flash, .export-toast, .exit-toast { display: none !important; }
   .wrap { position: static; overflow: visible; padding: 0; max-width: none; display: block; }
   .scroll { overflow: visible; }
   .panel-fill { display: block; overflow: visible; }
