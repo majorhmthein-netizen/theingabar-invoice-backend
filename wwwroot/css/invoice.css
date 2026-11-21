@@ -65,6 +65,71 @@
       .invoice.inv-n11 table.inv-table td{padding-top:8px;padding-bottom:8px}
       .invoice.inv-n16 table.inv-table{font-size:11.5px}
       .invoice.inv-n16 table.inv-table td{padding-top:6px;padding-bottom:6px}
+      /* One page (Han 2026-11-21 "1 ရွက်ထဲ"): the fixed blocks shrink as
+         the item count grows, so the whole invoice fits on one A4 page.
+         Few items (≤4) keep the full-size layout. These rules sit after
+         the .inv-n11/.inv-n16 tier rules and win ties (same specificity).
+         The QR never goes below 85px — it must stay scannable. */
+      .invoice.inv-c1{padding-top:22px;padding-bottom:18px}
+      .invoice.inv-c1 .inv-logo{height:58px}
+      .invoice.inv-c1 .inv-letterhead{padding-top:10px}
+      .invoice.inv-c1 .inv-services{margin-top:8px}
+      .invoice.inv-c1 .inv-addr{margin-top:8px;padding-top:6px}
+      .invoice.inv-c1 .inv-custbox{padding:12px 18px;margin-top:12px}
+      .invoice.inv-c1 table.inv-table{margin-top:12px}
+      .invoice.inv-c1 table.inv-table th{padding-top:8px;padding-bottom:8px}
+      .invoice.inv-c1 table.inv-table td{padding-top:8px;padding-bottom:8px}
+      .invoice.inv-c1 tr.inv-total td{padding-top:8px}
+      .invoice.inv-c1 .inv-paybox{margin-top:12px;padding:12px 18px}
+      .invoice.inv-c1 .inv-paybox img.p-qr{width:102px;height:102px}
+      .invoice.inv-c1 .inv-sign{margin-top:22px}
+      .invoice.inv-c1 .sign-box .line{height:36px}
+      .invoice.inv-c1 .inv-thanks{margin-top:20px;padding-top:10px}
+      .invoice.inv-c2{padding-top:18px;padding-bottom:14px}
+      .invoice.inv-c2 .inv-logo{height:48px}
+      .invoice.inv-c2 .inv-letterhead{padding-top:8px}
+      .invoice.inv-c2 .inv-services{margin-top:6px;line-height:1.7}
+      .invoice.inv-c2 .inv-addr{margin-top:6px;padding-top:5px}
+      .invoice.inv-c2 .inv-custbox{padding:10px 18px;margin-top:10px}
+      .invoice.inv-c2 table.inv-table{margin-top:10px}
+      .invoice.inv-c2 table.inv-table th{padding-top:7px;padding-bottom:7px}
+      .invoice.inv-c2 table.inv-table td{padding-top:7px;padding-bottom:7px}
+      .invoice.inv-c2 tr.inv-total td{padding-top:7px}
+      .invoice.inv-c2 .inv-paybox{margin-top:10px;padding:10px 18px}
+      .invoice.inv-c2 .inv-paybox img.p-qr{width:85px;height:85px}
+      .invoice.inv-c2 .inv-sign{margin-top:16px}
+      .invoice.inv-c2 .sign-box .line{height:30px}
+      .invoice.inv-c2 .inv-thanks{margin-top:14px;padding-top:8px}
+      .invoice.inv-c3{padding-top:16px;padding-bottom:12px}
+      .invoice.inv-c3 .inv-logo{height:42px}
+      .invoice.inv-c3 .inv-letterhead{padding-top:6px}
+      .invoice.inv-c3 .inv-services{margin-top:5px;line-height:1.6}
+      .invoice.inv-c3 .inv-addr{margin-top:5px;padding-top:4px}
+      .invoice.inv-c3 .inv-custbox{padding:8px 18px;margin-top:8px}
+      .invoice.inv-c3 table.inv-table{margin-top:8px}
+      .invoice.inv-c3 table.inv-table th{padding-top:6px;padding-bottom:6px}
+      .invoice.inv-c3 table.inv-table td{padding-top:6px;padding-bottom:6px}
+      .invoice.inv-c3 tr.inv-total td{padding-top:6px}
+      .invoice.inv-c3 .inv-paybox{margin-top:8px;padding:8px 18px}
+      .invoice.inv-c3 .inv-paybox img.p-qr{width:85px;height:85px}
+      .invoice.inv-c3 .inv-sign{margin-top:12px}
+      .invoice.inv-c3 .sign-box .line{height:22px}
+      .invoice.inv-c3 .inv-thanks{margin-top:8px;padding-top:6px}
+      .invoice.inv-c4{padding-top:14px;padding-bottom:10px}
+      .invoice.inv-c4 .inv-logo{height:37px}
+      .invoice.inv-c4 .inv-letterhead{padding-top:5px}
+      .invoice.inv-c4 .inv-services{margin-top:4px;line-height:1.5}
+      .invoice.inv-c4 .inv-addr{margin-top:4px;padding-top:3px}
+      .invoice.inv-c4 .inv-custbox{padding:7px 18px;margin-top:5px}
+      .invoice.inv-c4 table.inv-table{margin-top:5px}
+      .invoice.inv-c4 table.inv-table th{padding-top:5px;padding-bottom:5px}
+      .invoice.inv-c4 table.inv-table td{padding-top:5px;padding-bottom:5px}
+      .invoice.inv-c4 tr.inv-total td{padding-top:5px}
+      .invoice.inv-c4 .inv-paybox{margin-top:5px;padding:7px 18px}
+      .invoice.inv-c4 .inv-paybox img.p-qr{width:85px;height:85px}
+      .invoice.inv-c4 .inv-sign{margin-top:10px}
+      .invoice.inv-c4 .sign-box .line{height:22px}
+      .invoice.inv-c4 .inv-thanks{margin-top:7px;padding-top:5px}
       tr.inv-total td{
         border-bottom:none;border-top:2px solid #14202e;padding:12px 10px 4px;
         font-weight:800;font-size:16.5px;
@@ -97,6 +162,13 @@
         .inv-sign{flex-direction:column}
         .sign-box{width:100%;max-width:280px}
       }
+      /* Print page (Han 2026-11-21: Save as PDF came out 2 pages — the dialog
+         used Letter, shorter than A4, and the last thanks line spilled):
+         the invoice is an A4 document, so declare A4 + small margins.
+         Chrome uses the @page size in the print dialog; even if the phone
+         keeps Letter, the 6mm margins leave room for the last line.
+         The invoice's own layout/fonts/spacing are untouched. */
+      @page{size:A4;margin:6mm}
       @media print{
         body{background:#fff}
         .toolbar,.panel.form-panel,.log-panel,.toast{display:none !important}
@@ -104,6 +176,7 @@
         .grid{grid-template-columns:1fr}
         .panel.preview-panel{border:none;box-shadow:none;padding:0;background:#fff}
         .invoice{box-shadow:none;max-width:none}
+        .inv-thanks{break-inside:avoid}
       }
       @media print{
         html,body{height:auto; overflow:visible}
