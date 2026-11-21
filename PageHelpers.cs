@@ -110,7 +110,7 @@ public static class Paper
     {
         var (payName, payNum, qrSrc) = PaymentFor(owner, meta);
         return new InvoicePaperModel(meta, payName, payNum, qrSrc,
-            row.Customer, row.Date, row.No ?? "", row.Items, row.Total, row.Deposit);
+            row.Customer, row.Date, row.No ?? "", row.Items, row.Total, row.Deposit, row.PaperSize);
     }
 
     /// <summary>Parses a posted item list (desc0/amount0 … desc19/amount19).
@@ -176,10 +176,14 @@ public static class Paper
 /// <summary>Model for the frozen invoice-paper partial.</summary>
 public sealed record InvoicePaperModel(
     MetaRow Meta, string PayName, string PayNum, string QrSrc,
-    string Customer, string Date, string No, List<InvoiceItem> Items, long Total, long Deposit = 0)
+    string Customer, string Date, string No, List<InvoiceItem> Items, long Total, long Deposit = 0,
+    string PaperSize = "A4")
 {
     /// <summary>Amount still to pay: Total - Deposit. When Deposit is 0
     /// this equals Total, and the paper shows only Total (Han 2026-11-21:
     /// a zero deposit is not printed).</summary>
     public long FinalTotal => Total - Deposit;
+    /// <summary>True when this invoice prints on half-A4 (A4 တ၀က်စာ)
+    /// instead of a full A4 page (Han 2026-11-21).</summary>
+    public bool IsHalf => PaperSize == "Half";
 }

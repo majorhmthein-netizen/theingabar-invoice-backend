@@ -357,6 +357,27 @@ app.MapGet("/invoice/{id:long}.png", async (long id, HttpContext ctx) =>
 });
 
 /* ------------------------------------------------------------------ */
+/* Month-log PDF (approved users only; saved as a file, not printed)    */
+/* ------------------------------------------------------------------ */
+
+app.MapGet("/month/{ym}.pdf", async (string ym, HttpContext ctx) =>
+{
+    var me = await Auth.CurrentUserAsync(ctx);
+    if (me is null || !me.CanWrite) { ctx.Response.StatusCode = 403; return; }
+    var adminIds = (await AppDb.ListUsersAsync())
+        .Where(u => u.IsAdmin).Select(u => u.LocalId).ToHashSet();
+    var month = AppDb.MonthRows(await store.ListAsync(), adminIds, ym);
+    if (month is null) { ctx.Response.StatusCode = 404; return; }
+    var pdf = await PdfService.RenderMonthLogAsync(month.Value.Label, month.Value.Rows, month.Value.Total);
+    ctx.Response.StatusCode = 200;
+    ctx.Response.ContentType = "application/pdf";
+    ctx.Response.ContentLength = pdf.Length;
+    ctx.Response.Headers.ContentDisposition =
+        $"attachment; filename=\"month-log-{ym}.pdf\"";
+    await ctx.Response.Body.WriteAsync(pdf);
+});
+
+/* ------------------------------------------------------------------ */
 /* Admin Google sign-in (server-side OAuth code flow)                   */
 /* ------------------------------------------------------------------ */
 
@@ -655,13 +676,15 @@ public sealed record InvoiceItem(
 public sealed record InvoiceInput(
     string Uid, string? No, string? UserId, long? CreatedAt,
     string Date, string Customer, List<InvoiceItem> Items, long Total,
-    long Deposit = 0);
+    long Deposit = 0, string PaperSize = "A4");
 
 /// <summary>One invoice row, serialised in the Node server's exact field
 /// order: id, uid, no, userId, createdAt, date, customer, items, total,
-/// deposit, created_at, updated_at. Deposit (စရံငွေ, Han 2026-11-21) is
-/// the advance paid; the paper shows Total - Deposit as the final total
-/// only when Deposit > 0, and only Total when it is 0.</summary>
+/// deposit, paperSize, created_at, updated_at. Deposit (စရံငွေ, Han
+/// 2026-11-21) is the advance paid; the paper shows Total - Deposit as
+/// the final total only when Deposit > 0, and only Total when it is 0.
+/// PaperSize (Han 2026-11-21) is the paper the invoice prints on:
+/// "A4" (full page, the default) or "Half" (half-A4, A4 တ၀က်စာ).</summary>
 public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("id")] long Id,
     [property: System.Text.Json.Serialization.JsonPropertyName("uid")] string Uid,
@@ -673,6 +696,7 @@ public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("items")] List<InvoiceItem> Items,
     [property: System.Text.Json.Serialization.JsonPropertyName("total")] long Total,
     [property: System.Text.Json.Serialization.JsonPropertyName("deposit")] long Deposit = 0,
+    [property: System.Text.Json.Serialization.JsonPropertyName("paperSize")] string PaperSize = "A4",
     [property: System.Text.Json.Serialization.JsonPropertyName("created_at")] string CreatedAtStr = "",
     [property: System.Text.Json.Serialization.JsonPropertyName("updated_at")] string UpdatedAtStr = "");
 
@@ -699,7 +723,7 @@ public sealed class PostgresStore : IInvoiceStore
     public NpgsqlDataSource DataSource => _ds;
 
     private const string SelectCols =
-        "id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, created_at, updated_at";
+        "id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, created_at, updated_at";
 
     private const string CreateTableSql =
         "CREATE TABLE IF NOT EXISTS invoices (" +
@@ -713,6 +737,7 @@ public sealed class PostgresStore : IInvoiceStore
         "items JSONB NOT NULL, " +
         "total INTEGER NOT NULL, " +
         "deposit INTEGER NOT NULL DEFAULT 0, " +
+        "paper_size TEXT NOT NULL DEFAULT 'A4', " +
         "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), " +
         "updated_at TIMESTAMPTZ NOT NULL DEFAULT now())";
 
@@ -798,6 +823,7 @@ public sealed class PostgresStore : IInvoiceStore
             await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id TEXT");
             await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS client_created_at BIGINT");
             await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit INTEGER NOT NULL DEFAULT 0");
+            await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paper_size TEXT NOT NULL DEFAULT 'A4'");
             await ExecAsync(conn,
                 "CREATE UNIQUE INDEX IF NOT EXISTS invoices_no_unique ON invoices(no) WHERE no IS NOT NULL");
             // One-time data fix (v2, 2026-11-20): the Nissan Safari seed invoice
@@ -864,8 +890,9 @@ public sealed class PostgresStore : IInvoiceStore
             ParseItems(r.GetString(7)),
             r.GetInt32(8),
             r.IsDBNull(9) ? 0 : r.GetInt32(9),
-            Shared.FormatTs(r.GetDateTime(10)),
-            Shared.FormatTs(r.GetDateTime(11)));
+            r.IsDBNull(10) ? "A4" : r.GetString(10),
+            Shared.FormatTs(r.GetDateTime(11)),
+            Shared.FormatTs(r.GetDateTime(12)));
     }
 
     static string ItemsJson(List<InvoiceItem> items) =>
@@ -883,6 +910,7 @@ public sealed class PostgresStore : IInvoiceStore
         // PG total is INTEGER; an out-of-range total fails here (500), same as Node.
         cmd.Parameters.AddWithValue("@total", checked((int)inv.Total));
         cmd.Parameters.AddWithValue("@deposit", checked((int)inv.Deposit));
+        cmd.Parameters.AddWithValue("@paperSize", inv.PaperSize == "Half" ? "Half" : "A4");
     }
 
     public async Task<List<InvoiceRow>> ListAsync()
@@ -902,8 +930,8 @@ public sealed class PostgresStore : IInvoiceStore
         {
             await using var conn = await _ds.OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand(
-                "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit) " +
-                "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items,@total,@deposit) " +
+                "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size) " +
+                "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items,@total,@deposit,@paperSize) " +
                 $"RETURNING {SelectCols}", conn);
             AddInvoiceParams(cmd, inv);
             await using var r = await cmd.ExecuteReaderAsync();
@@ -932,7 +960,7 @@ public sealed class PostgresStore : IInvoiceStore
             await using var cmd = new NpgsqlCommand(
                 "UPDATE invoices SET no=COALESCE(@no, no), user_id=COALESCE(@userId, user_id), " +
                 "client_created_at=COALESCE(@createdAt, client_created_at), date=@date, customer=@customer, " +
-                "items=@items, total=@total, deposit=@deposit, updated_at=now() WHERE id=@id " +
+                "items=@items, total=@total, deposit=@deposit, paper_size=@paperSize, updated_at=now() WHERE id=@id " +
                 $"RETURNING {SelectCols}", conn);
             AddInvoiceParams(cmd, inv);
             cmd.Parameters.AddWithValue("@id", id);
@@ -1019,6 +1047,7 @@ public sealed class JsonStore : IInvoiceStore
             items,
             JLong(r, "total") ?? 0,
             JLong(r, "deposit") ?? 0,
+            JStr(r, "paperSize") is "Half" ? "Half" : "A4",
             JStr(r, "created_at") ?? "",
             JStr(r, "updated_at") ?? "");
     }
@@ -1101,6 +1130,7 @@ public sealed class JsonStore : IInvoiceStore
                 ["items"] = ItemsArray(inv.Items),
                 ["total"] = inv.Total,
                 ["deposit"] = inv.Deposit,
+                ["paperSize"] = inv.PaperSize == "Half" ? "Half" : "A4",
                 ["created_at"] = now,
                 ["updated_at"] = now,
             };
@@ -1131,6 +1161,7 @@ public sealed class JsonStore : IInvoiceStore
             row["items"] = ItemsArray(inv.Items);
             row["total"] = inv.Total;
             row["deposit"] = inv.Deposit;
+            row["paperSize"] = inv.PaperSize == "Half" ? "Half" : "A4";
             row["updated_at"] = Shared.IsoNow();
             Write(doc);
             return Task.FromResult<InvoiceRow?>(RowFromJson(row));

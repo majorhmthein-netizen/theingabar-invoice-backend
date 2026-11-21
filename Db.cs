@@ -43,6 +43,34 @@ public static class AppDb
                 new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month)));
     }
 
+    /// <summary>One month's log (လချုပ်, Han 2026-11-21): the mechanics
+    /// invoices whose Date falls in the given "yyyy-MM" month, most recent
+    /// first, plus the month total and the "July 2026" label. Returns null
+    /// when ym is not a valid year-month. Admin accounts' invoices are
+    /// excluded, like Home (the admin's full picture is /admin/log).</summary>
+    public static (List<InvoiceRow> Rows, long Total, string Label)? MonthRows(
+        List<InvoiceRow> all, HashSet<string> adminIds, string ym)
+    {
+        if (ym.Length != 7 || ym[4] != '-' ||
+            !int.TryParse(ym[..4], out var y) || !int.TryParse(ym[5..7], out var m) ||
+            m < 1 || m > 12) return null;
+        var label = CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(m) + " " + y;
+        var rows = new List<InvoiceRow>();
+        long total = 0;
+        foreach (var r in all)
+        {
+            if (r.UserId is not null && adminIds.Contains(r.UserId)) continue;
+            if (!DateOnly.TryParseExact(r.Date, "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) continue;
+            if (d.Year != y || d.Month != m) continue;
+            rows.Add(r);
+            total += r.Total;
+        }
+        rows.Sort((a, b) => string.Compare(b.Date, a.Date, StringComparison.Ordinal) is var c && c != 0
+            ? c : b.Id.CompareTo(a.Id));
+        return (rows, total, label);
+    }
+
     static string Iso(DateOnly d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     public static async Task InitAsync(NpgsqlDataSource ds)
@@ -732,9 +760,9 @@ public static class AppDb
                 // by using a raw insert here (same columns as PostgresStore).
                 var itemsJson = System.Text.Json.JsonSerializer.Serialize(withNo.Items, Shared.JsonOpts);
                 await using var ins = new NpgsqlCommand(
-                    "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit) " +
-                    "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items::jsonb,@total,@deposit) " +
-                    "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, created_at, updated_at",
+                    "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size) " +
+                    "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items::jsonb,@total,@deposit,@paperSize) " +
+                    "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, created_at, updated_at",
                     conn, tx);
                 ins.Parameters.AddWithValue("@uid", withNo.Uid);
                 ins.Parameters.AddWithValue("@no", no);
@@ -745,6 +773,7 @@ public static class AppDb
                 ins.Parameters.AddWithValue("@items", itemsJson);
                 ins.Parameters.AddWithValue("@total", checked((int)withNo.Total));
                 ins.Parameters.AddWithValue("@deposit", checked((int)withNo.Deposit));
+                ins.Parameters.AddWithValue("@paperSize", withNo.PaperSize == "Half" ? "Half" : "A4");
                 await using var r = await ins.ExecuteReaderAsync();
                 await r.ReadAsync();
                 var row = ReadInvoiceRow(r);
@@ -800,7 +829,8 @@ public static class AppDb
             r.IsDBNull(4) ? null : r.GetInt64(4),
             r.GetString(5), r.GetString(6), items, r.GetInt32(8),
             r.IsDBNull(9) ? 0 : r.GetInt32(9),
-            Shared.FormatTs(r.GetDateTime(10)), Shared.FormatTs(r.GetDateTime(11)));
+            r.IsDBNull(10) ? "A4" : r.GetString(10),
+            Shared.FormatTs(r.GetDateTime(11)), Shared.FormatTs(r.GetDateTime(12)));
     }
 
     public static async Task<long> PeriodTotalAsync(DateOnly from, DateOnly to, string? userLocalId)
