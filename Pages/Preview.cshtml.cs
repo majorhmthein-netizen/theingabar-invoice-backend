@@ -9,6 +9,7 @@ public class PreviewModel : AppPageModel
     public string Date { get; private set; } = "";
     public string Customer { get; private set; } = "";
     public List<InvoiceItem> Items { get; private set; } = new();
+    public long Deposit { get; private set; }
     public int RowCount { get; private set; } = 5;
     public long? EditId { get; private set; }
     public string? Error { get; private set; }
@@ -20,16 +21,18 @@ public class PreviewModel : AppPageModel
         Date = f["Date"].FirstOrDefault() ?? "";
         Customer = f["Customer"].FirstOrDefault() ?? "";
         Items = Paper.ParseItems(f);
+        Deposit = long.TryParse((f["Deposit"].FirstOrDefault() ?? "").Trim().Replace(",", ""),
+            out var dep) ? Math.Max(0, dep) : 0;
         RowCount = int.TryParse(f["RowCount"].FirstOrDefault(), out var rc)
             ? Math.Clamp(rc, 1, 20) : 5;
         EditId = long.TryParse(f["EditId"].FirstOrDefault(), out var eid) ? eid : null;
-        Error = Paper.ValidateDraft(Date, Customer, Items);
+        Error = Paper.ValidateDraft(Date, Customer, Items, Deposit);
         if (Error is not null)
         {
             // Preserve the draft across the redirect in TempData (cookie,
             // chunked) so the user does not lose what they typed.
             TempData["Draft"] = System.Text.Json.JsonSerializer.Serialize(
-                new DraftData(Date, Customer, Items, RowCount, EditId));
+                new DraftData(Date, Customer, Items, RowCount, EditId, Deposit));
             TempData["FlashError"] = Error;
             return RedirectToPage("/Form");
         }
@@ -39,7 +42,7 @@ public class PreviewModel : AppPageModel
         // button from the issued invoice landed on it — Chrome "Confirm
         // Form Resubmission" / ERR_CACHE_MISS.)
         TempData["Draft"] = System.Text.Json.JsonSerializer.Serialize(
-            new DraftData(Date, Customer, Items, RowCount, EditId));
+            new DraftData(Date, Customer, Items, RowCount, EditId, Deposit));
         return RedirectToPage("/Preview");
     }
     /// to /preview, the draft is kept in TempData, and the browser is
@@ -62,9 +65,10 @@ public class PreviewModel : AppPageModel
         Date = draft.Date;
         Customer = draft.Customer;
         Items = draft.Items;
+        Deposit = draft.Deposit;
         RowCount = draft.RowCount;
         EditId = draft.EditId;
-        Error = Paper.ValidateDraft(Date, Customer, Items);
+        Error = Paper.ValidateDraft(Date, Customer, Items, Deposit);
         if (Error is not null)
         {
             TempData["FlashError"] = Error;
@@ -84,7 +88,7 @@ public class PreviewModel : AppPageModel
         }
         var (payName, payNum, qrSrc) = Paper.PaymentFor(Me!.User, Meta!);
         PaperModel = new InvoicePaperModel(Meta!, payName, payNum, qrSrc,
-            Customer, Date, no, Items, Items.Sum(i => i.Amount));
+            Customer, Date, no, Items, Items.Sum(i => i.Amount), Deposit);
         return Page();
     }
 }
