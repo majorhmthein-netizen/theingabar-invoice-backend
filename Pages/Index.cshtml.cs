@@ -44,7 +44,9 @@ public class IndexModel : AppPageModel
             var ym = d.ToString("yyyy-MM");
             if (ym == MonthYm) continue;
             if (!byMonth.TryGetValue(ym, out var cur)) cur = (0, 0);
-            byMonth[ym] = (cur.Total + r.Total, cur.Count + 1);
+            // Previous-month totals count PAID invoices only (v34); the
+            // count is all invoices that month.
+            byMonth[ym] = (cur.Total + (r.PaymentStatus == "paid" ? r.Total : 0), cur.Count + 1);
         }
         Months = byMonth.Keys.OrderByDescending(k => k).Select(ym =>
         {
@@ -65,7 +67,8 @@ public class IndexModel : AppPageModel
             if (r.UserId is not null && adminIds.Contains(r.UserId)) continue;
             if (!DateOnly.TryParseExact(r.Date, "yyyy-MM-dd",
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) continue;
-            if (d >= from && d <= to) sum += r.Total;
+            // Month income counts PAID invoices only (Han 2026-11-21, v34).
+            if (d >= from && d <= to && r.PaymentStatus == "paid") sum += r.Total;
         }
         return sum;
     }

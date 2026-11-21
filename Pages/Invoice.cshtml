@@ -39,6 +39,30 @@
     </div>
   </div>
   <div class="export-toast" id="export-toast" role="status"></div>
+  <div class="panel no-print">
+    <div class="row">
+      <span>Payment: <b>@(Model.Row!.PaymentStatus == "not_yet" ? "Not yet" : "Paid")</b></span>
+      <span class="sp"></span>
+      @if (Model.Row!.PaymentStatus == "not_yet")
+      {
+        <form method="post" asp-page-handler="SetPayment" asp-route-id="@Model.Row!.Id" class="inline-form">
+          <input type="hidden" name="status" value="paid" />
+          <button class="mini-btn" type="submit">Mark as Paid</button>
+        </form>
+      }
+      else
+      {
+        <form method="post" asp-page-handler="SetPayment" asp-route-id="@Model.Row!.Id" class="inline-form">
+          <input type="hidden" name="status" value="not_yet" />
+          <button class="mini-btn" type="submit">Mark as Not yet</button>
+        </form>
+      }
+    </div>
+    @if (Model.Row!.PaymentStatus == "not_yet")
+    {
+      <p class="hint">Not yet — @AppDb.ReminderText(Model.Row!.Customer, Model.Row!.Total - Model.Row!.Deposit)</p>
+    }
+  </div>
 }
 
 <div class="scroll">

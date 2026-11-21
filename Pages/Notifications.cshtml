@@ -1,0 +1,47 @@
+@page
+@model NotificationsModel
+@{
+    ViewData["Title"] = "Notifications";
+}
+<div class="panel panel-fill">
+  <h2>Notifications</h2>
+  @if (Model.Items.Count == 0)
+  {
+    <p class="hint">No notifications.</p>
+  }
+  <div class="scroll">
+  @foreach (var n in Model.Items)
+  {
+    var overdue = n.Kind == "invoice" && n.ResolvedAt is null && n.RemindAt is not null && n.RemindAt.Value < DateTime.UtcNow;
+    <div class="log-row noti-row @(n.ResolvedAt is not null ? "noti-done" : "") @(overdue ? "noti-overdue" : "")">
+      <span>
+        <b>@(n.Kind == "admin" ? "Admin" : "Reminder")</b> — @n.Title
+        <br />
+        <span class="hint">@n.CreatedAt.ToString("dd.MM.yyyy HH:mm")</span>
+        @if (n.Kind == "invoice" && n.RemindAt is not null && n.ResolvedAt is null)
+        {
+          <span class="hint"> · Remind: @n.RemindAt.Value.ToString("dd.MM.yyyy")</span>
+        }
+        @if (overdue)
+        {
+          <span class="hint"> · Overdue</span>
+        }
+        @if (n.ResolvedAt is not null)
+        {
+          <span class="hint"> · Done</span>
+        }
+      </span>
+      <span class="amt">
+        @if (n.Kind == "invoice" && n.ResolvedAt is null && n.InvoiceId is not null)
+        {
+          <a class="mini-btn" href="/invoice/@n.InvoiceId">Invoice @(n.InvoiceNo ?? "")</a>
+          <form method="post" asp-page-handler="MarkPaid" class="inline-form">
+            <input type="hidden" name="id" value="@n.Id" />
+            <button class="mini-btn" type="submit">Mark as Paid</button>
+          </form>
+        }
+      </span>
+    </div>
+  }
+  </div>
+</div>
