@@ -33,6 +33,43 @@ public class PreviewModel : AppPageModel
             TempData["FlashError"] = Error;
             return RedirectToPage("/Form");
         }
+        // Post-Redirect-Get: keep the draft in TempData and redirect to
+        // GET /preview, so the preview page is a GET page. (Returning
+        // Page() here made Preview a POST result, and the device back
+        // button from the issued invoice landed on it — Chrome "Confirm
+        // Form Resubmission" / ERR_CACHE_MISS.)
+        TempData["Draft"] = System.Text.Json.JsonSerializer.Serialize(
+            new DraftData(Date, Customer, Items, RowCount, EditId));
+        return RedirectToPage("/Preview");
+    }
+    /// to /preview, the draft is kept in TempData, and the browser is
+    /// redirected to GET /preview. Before this, Preview returned Page()
+    /// from the POST, so the device back button from the issued invoice
+    /// landed on a POST page and Chrome showed "Confirm Form
+    /// Resubmission" / ERR_CACHE_MISS. Now back lands on a GET page.</summary>
+    public async Task<IActionResult> OnGetAsync()
+    {
+        if (await NeedWriteAsync() is { } redirect) return redirect;
+        if (TempData["Draft"] is not string json) return RedirectToPage("/Form");
+        DraftData? draft;
+        try { draft = System.Text.Json.JsonSerializer.Deserialize<DraftData>(json); }
+        catch { return RedirectToPage("/Form"); }
+        if (draft is null) return RedirectToPage("/Form");
+        // Keep the draft so a refresh of the preview still renders, and
+        // so Back-to-form can still go back to this preview. Save removes
+        // it (FormModel.OnPostSaveAsync) so the next new invoice is fresh.
+        TempData.Keep("Draft");
+        Date = draft.Date;
+        Customer = draft.Customer;
+        Items = draft.Items;
+        RowCount = draft.RowCount;
+        EditId = draft.EditId;
+        Error = Paper.ValidateDraft(Date, Customer, Items);
+        if (Error is not null)
+        {
+            TempData["FlashError"] = Error;
+            return RedirectToPage("/Form");
+        }
         string no;
         if (EditId is not null)
         {
