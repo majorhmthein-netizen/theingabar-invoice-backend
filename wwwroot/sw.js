@@ -6,7 +6,7 @@
    Offline WRITES are impossible without app JavaScript: any form submit
    made offline fails in the browser, exactly as a plain website would.
    Cache name is bumped when the asset list or the caching logic changes. */
-const CACHE = 'theingabar-html-v27';
+const CACHE = 'theingabar-html-v28';
 const STATIC_ASSETS = [
   '/',
 
@@ -50,7 +50,37 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => precacheAll())
   );
+});
+
+// Download ALL app data into the cache (Han 2026-11-21: "အားလုံး download
+// app data cache" + "Offline work, update ရင် overwrite"): fetch the
+// manifest (/api/cache-list — every invoice page, every month log, the
+// user's avatar + QR) and store each URL. Runs when the worker activates
+// (after each deploy) and whenever the app asks for a refresh. Every
+// entry OVERWRITES the cached copy (cache.put replaces), so an update
+// never leaves a stale page behind — the fresh version wins. A single
+// failing URL is skipped, never aborts the rest.
+function precacheAll() {
+  return fetch('/api/cache-list', { credentials: 'same-origin' })
+    .then((res) => (res && res.ok) ? res.json() : null)
+    .then((data) => {
+      if (!data || !Array.isArray(data.urls)) return;
+      return caches.open(CACHE).then((cache) =>
+        Promise.all(data.urls.map((u) =>
+          fetch(u, { credentials: 'same-origin' }).then((res) => {
+            if (res && res.ok) return cache.put(u, res);
+          }).catch(() => {})
+        ))
+      );
+    }).catch(() => {});
+}
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'precache') {
+    event.waitUntil(precacheAll());
+  }
 });
 
 // App pages (everything not static): the app's DATA lives in these
@@ -94,12 +124,30 @@ function putInCache(request, res) {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  // Never cache API responses, exports, auth flows, or per-user images
-  // (QR codes and avatars change on re-upload — caching them served
-  // the old image after a change).
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/') ||
-      url.pathname.startsWith('/qr/') || url.pathname.startsWith('/avatar/')) return;
+  // Never cache API responses, auth flows, or file exports.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
   if (url.pathname.endsWith('.pdf') || url.pathname.endsWith('.png')) return;
+  // Per-user images (avatar + QR): cache them so they load instantly
+  // (Han 2026-11-21: photos loaded from the server on every visit).
+  // Stale-while-revalidate: serve the cached copy at once, refresh it
+  // in the background so a re-uploaded photo shows on the next view.
+  // The uploading user sees the new photo immediately through the
+  // localStorage cache (upload-cache.js / cropper.js), which wins over
+  // this copy. (Earlier the SW skipped /qr/ + /avatar/ entirely, so a
+  // re-upload never showed stale — that cost a server fetch every time.)
+  if (url.pathname.startsWith('/qr/') || url.pathname.startsWith('/avatar/')) {
+    event.respondWith(
+      caches.match(event.request, { ignoreSearch: true }).then((cached) => {
+        var network = fetch(event.request).then((res) => {
+          putInCache(event.request, res);
+          return res;
+        }).catch(() => null);
+        if (cached) { event.waitUntil(network); return cached; }
+        return network;
+      })
+    );
+    return;
+  }
   const isStatic = url.pathname.startsWith('/css/') || url.pathname.startsWith('/fonts/') ||
     url.pathname.startsWith('/js/') || url.pathname.startsWith('/img/') ||
     url.pathname === '/manifest.webmanifest' ||
