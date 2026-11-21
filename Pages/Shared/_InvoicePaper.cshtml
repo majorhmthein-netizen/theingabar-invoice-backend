@@ -1,11 +1,16 @@
 @* Invoice paper — the APPROVED Safari template layout (Han 2026-11-21):
    two-column letterhead (gold logo left, INVOICE + id right),
-   boxed customer panel, navy items-table header, boxed payment panel,
-   two signature lines, thanks + group line. Han-ordered changes vs
-   the template: title is the gold logo (trial 2026-11-21, was U Moe text)
-   and both "Theingabar Automotive Group" lines are gold. Do not change
-   the layout otherwise: the printed invoice format stays exactly as
-   approved. Model: InvoicePaperModel. Razor auto-encodes all values. *@
+   boxed customer panel, navy items-table header, QR code below the
+   table, thanks + group line. Han-ordered changes vs the template:
+   title is the gold logo (trial 2026-11-21, was U Moe text) and both
+   "Theingabar Automotive Group" lines are gold; signatures removed
+   (2026-11-21); payment box removed, QR alone (2026-11-21); the
+   "No." column header is blank so it never reads as "no description"
+   (row numbers 1,2,3… stay); "Currency: MMK" removed from the customer
+   box (the AMOUNT (MMK) header + Total (MMK) below already show it).
+   Do not change the layout otherwise: the printed invoice format
+   stays exactly as approved. Model: InvoicePaperModel. Razor
+   auto-encodes all values. *@
 @model InvoicePaperModel
 @{
     var tier = Paper.ItemTier(Model.Items.Count);
@@ -38,7 +43,6 @@
     <div class="inv-custdate">
       <span class="k">Date</span>
       <span class="v" id="pDate">@Paper.FmtDate(Model.Date)</span>
-      <span class="inv-curr">Currency: MMK</span>
     </div>
   </div>
   <div class="inv-table-wrap">
@@ -50,7 +54,7 @@
   </div>
   <table class="inv-table">
     <thead>
-      <tr><th style="width:28px">No.</th><th>Description</th><th class="amt">Amount (MMK)</th></tr>
+      <tr><th style="width:28px"></th><th>Description</th><th class="amt">Amount (MMK)</th></tr>
     </thead>
     <tbody id="pItems">
     @for (var i = 0; i < Model.Items.Count; i++)
@@ -61,15 +65,17 @@
     </tbody>
     <tbody>
       <tr class="inv-total"><td></td><td>Total (MMK)</td><td class="amt" id="pTotal">@Paper.Fmt(Model.Total)</td></tr>
+      @if (Model.Deposit > 0)
+      {
+        <tr class="inv-deposit"><td></td><td>Deposit (စရံငွေ)</td><td class="amt" id="pDeposit">@Paper.Fmt(Model.Deposit)</td></tr>
+        <tr class="inv-final"><td></td><td>Final Total (MMK)</td><td class="amt" id="pFinalTotal">@Paper.Fmt(Model.FinalTotal)</td></tr>
+      }
     </tbody>
   </table>
   </div>
-  <div class="inv-paybox">
-    <div class="inv-paytext">
-      <div class="p-k">Payment</div>
-      <div class="p-line"><b class="p-name">KBZ Pay</b> — No. <b class="p-num" id="pPayNum">@Model.PayNum</b> — Name: <b class="p-payname" id="pPayName">@Model.PayName</b></div>
-      <div class="p-scan">Scan the QR code with KBZPay to pay.</div>
-    </div>
+  @* Payment box removed (Han 2026-11-21) — only the QR stays, centred
+     under the table, so the space is cleaner. *@
+  <div class="inv-qr">
     <img id="pQr" class="p-qr" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" crossorigin="anonymous" />
   </div>
   <div class="inv-thanks">
