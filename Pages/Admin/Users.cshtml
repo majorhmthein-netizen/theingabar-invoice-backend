@@ -62,6 +62,13 @@
           <input type="hidden" name="UserId" value="@u.Id" />
           <button class="mini-btn" type="submit">Reset login lockout</button>
         </form>
+        @if (!u.IsAdmin)
+        {
+          <form method="post" asp-page-handler="ResetPinDirect" class="inline-form">
+            <input type="hidden" name="UserId" value="@u.Id" />
+            <button class="mini-btn" type="submit">Reset PIN to 1111</button>
+          </form>
+        }
       </span>
     </div>
   }
