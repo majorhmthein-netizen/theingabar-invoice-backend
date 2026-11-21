@@ -14,7 +14,7 @@
       }
       .inv-letterhead{border-top:3px solid #14202e;padding-top:16px}
       .inv-brand{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-      .inv-logo{display:block;height:72px;width:auto}
+      .inv-logo{display:block;height:90px;width:auto}
       .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.18em;font-size:12.5px;color:#D4AF37;margin-top:6px}
       .inv-brand-right{text-align:right}
       .inv-word{
@@ -59,11 +59,8 @@
       .inv-table-wrap{position:relative}
       .inv-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50%;pointer-events:none;z-index:0;text-align:center}
       .inv-watermark img{width:100%;display:block}
-      /* Watermark text (Han 2026-11-21): the shop name + id, small and
-         faint, under the faded logo — so the watermark itself identifies
-         the shop and the invoice. */
-      .inv-watermark .wm-group{display:block;font-family:"Archivo",sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#D4AF37;margin-top:2px}
-      .inv-watermark .wm-id{display:block;font-family:"Archivo",sans-serif;font-size:12px;color:#D4AF37;margin-top:4px}
+      /* Watermark (Han 2026-11-21): the faded logo alone — the group
+         name and id text lines were removed, so no wm-group/wm-id. */
       /* Many items: shrink the description so a full 20-item invoice still
          fits on one page. Few items never grow past the default size (the max). */
       .invoice.inv-n11 table.inv-table{font-size:13px}
@@ -76,7 +73,7 @@
          the .inv-n11/.inv-n16 tier rules and win ties (same specificity).
          The QR never goes below 85px — it must stay scannable. */
       .invoice.inv-c1{padding-top:22px;padding-bottom:18px}
-      .invoice.inv-c1 .inv-logo{height:58px}
+      .invoice.inv-c1 .inv-logo{height:72px}
       .invoice.inv-c1 .inv-letterhead{padding-top:10px}
       .invoice.inv-c1 .inv-services{margin-top:8px}
       .invoice.inv-c1 .inv-addr{margin-top:8px;padding-top:6px}
@@ -90,7 +87,7 @@
       .invoice.inv-c1 .inv-qr img.p-qr{width:102px;height:102px}
       .invoice.inv-c1 .inv-thanks{margin-top:20px;padding-top:10px}
       .invoice.inv-c2{padding-top:18px;padding-bottom:14px}
-      .invoice.inv-c2 .inv-logo{height:48px}
+      .invoice.inv-c2 .inv-logo{height:60px}
       .invoice.inv-c2 .inv-letterhead{padding-top:8px}
       .invoice.inv-c2 .inv-services{margin-top:6px;line-height:1.7}
       .invoice.inv-c2 .inv-addr{margin-top:6px;padding-top:5px}
@@ -104,7 +101,7 @@
       .invoice.inv-c2 .inv-qr img.p-qr{width:85px;height:85px}
       .invoice.inv-c2 .inv-thanks{margin-top:14px;padding-top:8px}
       .invoice.inv-c3{padding-top:16px;padding-bottom:12px}
-      .invoice.inv-c3 .inv-logo{height:42px}
+      .invoice.inv-c3 .inv-logo{height:52px}
       .invoice.inv-c3 .inv-letterhead{padding-top:6px}
       .invoice.inv-c3 .inv-services{margin-top:5px;line-height:1.6}
       .invoice.inv-c3 .inv-addr{margin-top:5px;padding-top:4px}
@@ -118,7 +115,7 @@
       .invoice.inv-c3 .inv-qr img.p-qr{width:85px;height:85px}
       .invoice.inv-c3 .inv-thanks{margin-top:8px;padding-top:6px}
       .invoice.inv-c4{padding-top:14px;padding-bottom:10px}
-      .invoice.inv-c4 .inv-logo{height:37px}
+      .invoice.inv-c4 .inv-logo{height:46px}
       .invoice.inv-c4 .inv-letterhead{padding-top:5px}
       .invoice.inv-c4 .inv-services{margin-top:4px;line-height:1.5}
       .invoice.inv-c4 .inv-addr{margin-top:4px;padding-top:3px}
@@ -152,7 +149,7 @@
       .inv-thanks-group{display:block;margin-top:4px;font-size:14px;color:#5b6a7a;font-weight:600}
       @media (max-width:560px){
         .invoice{padding:22px 18px 20px}
-        .inv-logo{height:56px}
+        .inv-logo{height:70px}
         .inv-word{font-size:22px}
         .inv-custdate{text-align:left}
         .inv-qr img.p-qr{width:112px;height:112px}
