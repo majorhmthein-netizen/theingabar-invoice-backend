@@ -40,7 +40,7 @@
       .inv-custdate{text-align:right}
       .inv-custdate .v{font-variant-numeric:tabular-nums}
       .inv-curr{display:block;font-size:14px;color:#5b6a7a;margin-top:4px}
-      table.inv-table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14.5px}
+      table.inv-table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14.5px;position:relative;z-index:1}
       table.inv-table th{
         text-align:left;background:#14202e;color:#ffffff;
         padding:10px;font-family:"Archivo",sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
@@ -49,7 +49,22 @@
       table.inv-table td{padding:10px;border-bottom:1px solid #dfe5ec;vertical-align:top;line-height:1.55}
       table.inv-table td.amt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700;color:#000000}
       table.inv-table td.desc{font-weight:300;color:#000000}
-      table.inv-table td.no{color:#7b8a99;width:30px}
+      table.inv-table td.no{color:#7b8a99;width:28px}
+      table.inv-table th:first-child,table.inv-table td.no{padding-left:4px;padding-right:4px}
+      table.inv-table th.amt,table.inv-table td.amt{width:96px;padding-left:6px;padding-right:6px}
+      /* Logo watermark behind the description area (Han 2026-11-21):
+         the image itself is pre-faded to ~10% (theingabar-logo-watermark.jpg),
+         so the text stays readable over it and it costs almost no ink.
+         An <img> prints; a CSS background would not (browsers skip
+         backgrounds in print by default). */
+      .inv-table-wrap{position:relative}
+      .inv-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50%;pointer-events:none;z-index:0}
+      /* Many items: shrink the description so a full 20-item invoice still
+         fits on one page. Few items never grow past the default size (the max). */
+      .invoice.inv-n11 table.inv-table{font-size:13px}
+      .invoice.inv-n11 table.inv-table td{padding-top:8px;padding-bottom:8px}
+      .invoice.inv-n16 table.inv-table{font-size:11.5px}
+      .invoice.inv-n16 table.inv-table td{padding-top:6px;padding-bottom:6px}
       tr.inv-total td{
         border-bottom:none;border-top:2px solid #14202e;padding:12px 10px 4px;
         font-weight:800;font-size:16.5px;
