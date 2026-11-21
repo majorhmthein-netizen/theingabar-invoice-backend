@@ -200,6 +200,37 @@ app.MapRazorPages();
 app.MapGet("/api/health", async (HttpResponse res) =>
     await SendJson(res, 200, new { ok = true, store = storeName, time = IsoNow() }));
 
+/* Download ALL app data into the cache (Han 2026-11-21: "အားလုံး download
+   app data cache" + "Offline work, update ရင် overwrite"): the service
+   worker fetches this list and stores every URL, so the whole app opens
+   instantly and works offline. Login-gated (session cookie, like the
+   invoice pages — the SW fetch sends it); the list is the mechanics
+   invoices + month logs + the user's own avatar/QR, i.e. everything the
+   user has done and seen. The SW overwrites each cached copy (cache.put
+   replaces), so an update never leaves a stale page behind. */
+app.MapGet("/api/cache-list", async (HttpContext ctx) =>
+{
+    var me = await Auth.CurrentUserAsync(ctx);
+    if (me is null) { ctx.Response.StatusCode = 401; return; }
+    var adminIds = (await AppDb.ListUsersAsync())
+        .Where(u => u.IsAdmin).Select(u => u.LocalId).ToHashSet();
+    var all = await store.ListAsync();
+    var urls = new List<string> { "/", "/user", "/form" };
+    var months = new HashSet<string>();
+    foreach (var r in all)
+    {
+        if (r.UserId is not null && adminIds.Contains(r.UserId)) continue;
+        urls.Add($"/invoice/{r.Id}");
+        if (DateOnly.TryParseExact(r.Date, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            months.Add(d.ToString("yyyy-MM"));
+    }
+    foreach (var ym in months) urls.Add($"/month/{ym}");
+    if (me.User.HasAvatar) urls.Add($"/avatar/user/{me.User.Id}");
+    urls.Add(me.User.HasQr ? $"/qr/user/{me.User.Id}" : "/qr/meta");
+    await SendJson(ctx.Response, 200, new { urls });
+});
+
 app.MapGet("/api/invoices", async (HttpRequest req, HttpResponse res) =>
 {
     if (!await CheckApiKeyAsync(req, res)) return;
