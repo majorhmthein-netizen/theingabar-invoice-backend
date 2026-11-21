@@ -128,15 +128,9 @@ public static class PdfService
                         {
                             h.Item().AlignRight().Text("INVOICE")
                                 .Style(Latin(21, 800, "#14202e").LetterSpacing(0.22f));
-                            h.Item().PaddingTop(4).LineHorizontal(3).LineColor("#D4AF37");
                             h.Item().PaddingTop(5).AlignRight().Text(t =>
                             {
-                                t.Span("Date: ").Style(Myanmar(10, 600, "#5b6a7a"));
-                                t.Span(Paper.FmtDateLong(row.Date)).Style(Myanmar(10, 600, "#24344a"));
-                            });
-                            h.Item().PaddingTop(2).AlignRight().Text(t =>
-                            {
-                                t.Span("No. ").Style(Myanmar(10, 600, "#5b6a7a"));
+                                t.Span("id: ").Style(Myanmar(10, 600, "#5b6a7a"));
                                 t.Span(row.No ?? "").Style(Myanmar(10, 600, "#24344a"));
                             });
                         });
@@ -251,11 +245,12 @@ public static class PdfService
                         });
                     });
 
-                    // --- thanks ---
-                    col.Item().PaddingTop(22).BorderTop(1).BorderColor("#dfe5ec").AlignCenter().Column(c =>
+                    // --- thanks (each line centred: AlignCenter belongs on the
+                    // text item itself — on the full-width column it does nothing) ---
+                    col.Item().PaddingTop(22).BorderTop(1).BorderColor("#dfe5ec").Column(c =>
                     {
-                        c.Item().PaddingTop(12).Text(meta.Thanks).Style(Latin(11.25f, 700, "#0b5394").LetterSpacing(0.02f));
-                        c.Item().PaddingTop(3).Text(Paper.TitleCase(meta.Group)).Style(Latin(10.5f, 600, "#5b6a7a"));
+                        c.Item().PaddingTop(12).AlignCenter().Text(meta.Thanks).Style(Latin(11.25f, 700, "#0b5394").LetterSpacing(0.02f));
+                        c.Item().PaddingTop(3).AlignCenter().Text(Paper.TitleCase(meta.Group)).Style(Latin(10.5f, 600, "#5b6a7a"));
                     });
                 });
             });
