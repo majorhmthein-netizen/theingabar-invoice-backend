@@ -11,6 +11,14 @@
    Do not change the layout otherwise: the printed invoice format
    stays exactly as approved. Model: InvoicePaperModel. Razor
    auto-encodes all values. *@
+@* Paper size (Han 2026-11-21): A4 (full page) is the default; a
+   half-A4 invoice prints on A5 instead. @page cannot be scoped to a
+   class, so the half-A4 page is declared here, after invoice.css,
+   so it wins for this invoice only. *@
+@if (Model.IsHalf)
+{
+  <style>@("@page{size:A5;margin:6mm}")</style>
+}
 @model InvoicePaperModel
 @{
     var tier = Paper.ItemTier(Model.Items.Count);
@@ -48,7 +56,9 @@
   <div class="inv-table-wrap">
   <div class="inv-watermark" aria-hidden="true">
     <img src="/img/theingabar-logo-watermark.jpg" alt="" />
-    <span class="wm-shop">@Model.Meta.Shop</span>
+    @* The logo already carries the gold သိန်းကမ္ဘာ wordmark, so no
+       separate shop-name text line (it duplicated it — Han 2026-11-21).
+       Group + id sit right under the gold logo, in the shop gold. *@
     <span class="wm-group">@Model.Meta.Group</span>
     <span class="wm-id">id: @Model.No</span>
   </div>
