@@ -109,8 +109,13 @@ public static class Paper
     public static InvoicePaperModel PaperFor(InvoiceRow row, UserRow? owner, MetaRow meta)
     {
         var (payName, payNum, qrSrc) = PaymentFor(owner, meta);
+        // Front-end cache key for the invoice QR (Han 2026-11-21: all
+        // user uploads cached): the owner's QR, the shop default QR, or
+        // "" for the static seed QR (already cached by the service worker).
+        var qrCacheKey = owner is not null && owner.HasQr ? $"tgb-qr-{owner.Id}"
+            : meta.HasQr ? "tgb-qr-meta" : "";
         return new InvoicePaperModel(meta, payName, payNum, qrSrc,
-            row.Customer, row.Date, row.No ?? "", row.Items, row.Total, row.Deposit, row.PaperSize);
+            row.Customer, row.Date, row.No ?? "", row.Items, row.Total, row.Deposit, row.PaperSize, qrCacheKey);
     }
 
     /// <summary>Parses a posted item list (desc0/amount0 … desc19/amount19).
@@ -177,7 +182,7 @@ public static class Paper
 public sealed record InvoicePaperModel(
     MetaRow Meta, string PayName, string PayNum, string QrSrc,
     string Customer, string Date, string No, List<InvoiceItem> Items, long Total, long Deposit = 0,
-    string PaperSize = "A4")
+    string PaperSize = "A4", string QrCacheKey = "")
 {
     /// <summary>Amount still to pay: Total - Deposit. When Deposit is 0
     /// this equals Total, and the paper shows only Total (Han 2026-11-21:
