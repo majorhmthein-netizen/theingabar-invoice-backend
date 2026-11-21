@@ -78,7 +78,17 @@
   document.addEventListener('click', function (ev) {
     if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button !== 0) return;
     var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
-    if (!a) return;
+    if (!a) {
+      /* Whole-row tap (Han 2026-11-21): a .log-row[data-href] opens its
+         invoice wherever the row is tapped — except on a link, button or
+         form inside it, so History Edit / Delete keep working. */
+      var row = ev.target && ev.target.closest ? ev.target.closest('.log-row[data-href]') : null;
+      if (!row) return;
+      if (ev.target.closest('a[href],button,form,input,select,textarea')) return;
+      ev.preventDefault();
+      go(row.getAttribute('data-href'));
+      return;
+    }
     var href = a.getAttribute('href');
     if (!href || href.charAt(0) === '#' || a.target === '_blank' || a.hasAttribute('download')) return;
     if (!sameOrigin(href)) return;
