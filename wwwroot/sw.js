@@ -6,7 +6,7 @@
    Offline WRITES are impossible without app JavaScript: any form submit
    made offline fails in the browser, exactly as a plain website would.
    Cache name is bumped when the asset list or the caching logic changes. */
-const CACHE = 'theingabar-html-v19';
+const CACHE = 'theingabar-html-v22';
 const STATIC_ASSETS = [
   '/',
 
@@ -34,6 +34,7 @@ const STATIC_ASSETS = [
   '/icon-maskable-512.png',
   '/apple-touch-icon.png',
   '/img/theingabar-logo-header.jpg',
+  '/img/theingabar-logo-watermark.jpg',
   '/img/theingabar-wordmark.png',
   '/seed-qr.jpg'
 ];
@@ -100,7 +101,8 @@ self.addEventListener('fetch', (event) => {
       url.pathname.startsWith('/qr/') || url.pathname.startsWith('/avatar/')) return;
   if (url.pathname.endsWith('.pdf') || url.pathname.endsWith('.png')) return;
   const isStatic = url.pathname.startsWith('/css/') || url.pathname.startsWith('/fonts/') ||
-    url.pathname.startsWith('/js/') || url.pathname === '/manifest.webmanifest' ||
+    url.pathname.startsWith('/js/') || url.pathname.startsWith('/img/') ||
+    url.pathname === '/manifest.webmanifest' ||
     url.pathname === '/seed-qr.jpg';
   if (isStatic) {
     event.respondWith(
