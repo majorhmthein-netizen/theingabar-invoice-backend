@@ -172,9 +172,6 @@ public static class PdfService
             var cPayPad = new[] { 14f, 11f, 8f, 6f, 5f }[ct];
             var cPayLinePadT = new[] { 5f, 5f, 4f, 3f, 2f }[ct];
             var cQr = new[] { 96f, 76f, 64f, 64f, 64f }[ct];
-            var cSignPadT = new[] { 26f, 16f, 10f, 8f, 6f }[ct];
-            var cSignLineH = new[] { 44f, 36f, 28f, 22f, 18f }[ct];
-            var cSignCapPadT = new[] { 5f, 5f, 5f, 3f, 2f }[ct];
             var cThanksPadT = new[] { 22f, 14f, 8f, 5f, 3f }[ct];
             var cThanksPadT2 = new[] { 12f, 8f, 6f, 4f, 3f }[ct];
             var cThanksGroupPadT = new[] { 3f, 3f, 3f, 2f, 1f }[ct];
@@ -248,9 +245,18 @@ public static class PdfService
                     // --- items table (navy header) + faint logo watermark behind it ---
                     col.Item().PaddingTop(cTablePadT).Layers(layers =>
                     {
-                        var wm = WatermarkBytes();
-                        if (wm is not null)
-                            layers.Layer().AlignCenter().AlignMiddle().Width(260).Image(wm).FitArea();
+                        // Watermark (Han 2026-11-21): the faded logo plus the
+                        // shop name + id in small faint text, so the watermark
+                        // itself identifies the shop and the invoice.
+                        layers.Layer().AlignCenter().AlignMiddle().Column(c =>
+                        {
+                            var wm = WatermarkBytes();
+                            if (wm is not null)
+                                c.Item().AlignCenter().Width(220).Image(wm).FitArea();
+                            c.Item().PaddingTop(6).AlignCenter().Text(meta.Shop).Style(ShopTitle(22, "#b7c2cd"));
+                            c.Item().PaddingTop(2).AlignCenter().Text(meta.Group).Style(Latin(8, 700, "#b7c2cd").LetterSpacing(0.18f));
+                            c.Item().PaddingTop(4).AlignCenter().Text("id: " + (row.No ?? "")).Style(Latin(10, 700, "#b7c2cd"));
+                        });
                         layers.PrimaryLayer().Table(t =>
                     {
                         t.ColumnsDefinition(cd =>
@@ -308,24 +314,6 @@ public static class PdfService
                         if (qr is not null)
                             r.ConstantItem(cQr).Border(1).BorderColor("#dfe5ec").Padding(4)
                                 .Image(qr).FitArea();
-                    });
-
-                    // --- signatures ---
-                    col.Item().PaddingTop(cSignPadT).Row(r =>
-                    {
-                        r.RelativeItem().Column(c =>
-                        {
-                            c.Item().Height(cSignLineH).BorderBottom(1).BorderColor("#14202e");
-                            c.Item().PaddingTop(cSignCapPadT).AlignCenter().Text("Customer Signature")
-                                .Style(Myanmar(9.75f, 400, "#5b6a7a"));
-                        });
-                        r.ConstantItem(40);
-                        r.RelativeItem().Column(c =>
-                        {
-                            c.Item().Height(cSignLineH).BorderBottom(1).BorderColor("#14202e");
-                            c.Item().PaddingTop(cSignCapPadT).AlignCenter().Text("Authorized Signature")
-                                .Style(Myanmar(9.75f, 400, "#5b6a7a"));
-                        });
                     });
 
                     // --- thanks (each line centred: AlignCenter belongs on the
