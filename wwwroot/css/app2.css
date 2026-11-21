@@ -145,15 +145,14 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
   padding: 16px; margin-bottom: 12px;
   box-shadow: 0 8px 28px rgba(20, 35, 60, .12);
 }
-/* Home top boxes: row in portrait, column in landscape (Han 2026-11-21). */
-.boxes { display: flex; gap: 12px; }
-@media (orientation: portrait) {
-  .boxes { flex-direction: row; }
-  .boxes > .panel { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
-}
-@media (orientation: landscape) {
-  .boxes { flex-direction: column; }
-}
+/* Home top boxes: stacked column in BOTH orientations (Han 2026-11-21
+   10:09–10:10). The portrait row (from the 08:42 glass order) squeezed
+   the three boxes so the text stacked into narrow columns and the
+   Income box was cut off the right edge of the screen — not responsive
+   on his phone. Column everywhere: full-width boxes, readable on any
+   device, any orientation. */
+.boxes { display: flex; flex-direction: column; gap: 12px; }
+.boxes > .panel { flex: 1 1 auto; margin-bottom: 0; }
 .panel h2 {
   margin: 0 0 10px; font-size: 1.05rem; font-weight: 800; color: var(--navy);
   padding-bottom: 8px; border-bottom: 1px solid #eef1f5; position: relative;
