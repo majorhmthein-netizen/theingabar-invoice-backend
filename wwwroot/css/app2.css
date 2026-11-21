@@ -241,6 +241,8 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
   transition: background .15s ease;
 }
 .log-row:hover { background: #f6f9fc; }
+.log-row[data-href] { cursor: pointer; }
+.log-row[data-href]:active { background: #eef3f8; }
 .log-row .amt { margin-left: auto; font-weight: 700; color: var(--black); }
 .log-no { font-weight: 700; color: var(--navy); }
 .ok { color: #1e7a34; font-weight: 700; }
