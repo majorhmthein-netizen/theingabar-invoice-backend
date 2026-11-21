@@ -2,9 +2,9 @@
  *
  * Mirrors the APPROVED Safari template layout (Han 2026-11-21): two-column
  * letterhead, boxed customer panel, navy items-table header, boxed payment
- * panel, two signature lines, thanks + group line. Title U Moe + both
- * group lines gold (Han-ordered, vs the template's serif title and grey
- * group line). Same text, same sizes (px → pt at 96 dpi = ×0.75), same
+ * panel, two signature lines, thanks + group line. Title is the gold logo
+ * (trial 2026-11-21, was U Moe text) + both group lines gold (Han-ordered,
+ * vs the template's serif title and grey group line). Same text, same sizes (px → pt at 96 dpi = ×0.75), same
  * colours, same fonts (TTF files in wwwroot/fonts/ttf — Skia cannot load
  * the woff2 files the web pages use). Myanmar shaping is handled by
  * Skia/HarfBuzz inside QuestPDF.
@@ -38,6 +38,24 @@ public static class PdfService
             if (File.Exists(p)) return p;
         }
         throw new FileNotFoundException("PDF font missing: " + name);
+    }
+
+    static byte[]? _logoBytes;
+    static byte[]? LogoBytes()
+    {
+        // Gold shop logo for the invoice header (trial, Han 2026-11-21).
+        // Falls back to the U Moe text title when the file is missing.
+        if (_logoBytes is not null) return _logoBytes;
+        foreach (var baseDir in new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "wwwroot", "img"),
+            Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img"),
+        })
+        {
+            var p = Path.Combine(baseDir, "theingabar-logo-header.jpg");
+            if (File.Exists(p)) return _logoBytes = File.ReadAllBytes(p);
+        }
+        return null;
     }
 
     static void EnsureFonts()
@@ -120,7 +138,11 @@ public static class PdfService
                     {
                         r.RelativeItem().Column(h =>
                         {
-                            h.Item().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
+                            var logo = LogoBytes();
+                            if (logo is not null)
+                                h.Item().Height(54).Image(logo).FitArea();
+                            else
+                                h.Item().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
                             h.Item().PaddingTop(4).Text(meta.Group)
                                 .Style(Latin(9, 700, "#D4AF37").LetterSpacing(0.18f));
                         });
