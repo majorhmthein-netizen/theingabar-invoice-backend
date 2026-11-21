@@ -7,7 +7,7 @@
    the layout otherwise: the printed invoice format stays exactly as
    approved. Model: InvoicePaperModel. Razor auto-encodes all values. *@
 @model InvoicePaperModel
-<div class="invoice" id="invoice">
+<div class="invoice@(Paper.ItemTier(Model.Items.Count) == 2 ? " inv-n16" : Paper.ItemTier(Model.Items.Count) == 1 ? " inv-n11" : "")" id="invoice">
   <div class="inv-letterhead">
     <div class="inv-brand">
       <div class="inv-brand-left">
@@ -36,9 +36,11 @@
       <span class="inv-curr">Currency: MMK</span>
     </div>
   </div>
+  <div class="inv-table-wrap">
+  <img class="inv-watermark" src="/img/theingabar-logo-watermark.jpg" alt="" aria-hidden="true" />
   <table class="inv-table">
     <thead>
-      <tr><th style="width:30px">No.</th><th>Description</th><th class="amt">Amount (MMK)</th></tr>
+      <tr><th style="width:28px">No.</th><th>Description</th><th class="amt">Amount (MMK)</th></tr>
     </thead>
     <tbody id="pItems">
     @for (var i = 0; i < Model.Items.Count; i++)
@@ -51,6 +53,7 @@
       <tr class="inv-total"><td></td><td>Total (MMK)</td><td class="amt" id="pTotal">@Paper.Fmt(Model.Total)</td></tr>
     </tbody>
   </table>
+  </div>
   <div class="inv-paybox">
     <div class="inv-paytext">
       <div class="p-k">Payment</div>
