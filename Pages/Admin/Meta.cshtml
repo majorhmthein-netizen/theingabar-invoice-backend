@@ -23,7 +23,7 @@
     <label class="fld"><span>Default QR image (JPG/PNG, max 2 MB)</span><input name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
     @if (Model.HasQr)
     {
-      <p><img src="/qr/meta" alt="Current default QR" style="width:118px;height:118px" /></p>
+      <p><img src="/qr/meta" data-cache="tgb-qr-meta" alt="Current default QR" style="width:118px;height:118px" /></p>
     }
     <button class="btn" type="submit">Save metadata</button>
   </form>
