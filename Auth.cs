@@ -16,9 +16,12 @@
  *   password era are dead data, never verified as passwords.
  * - Sessions are opaque ids in Postgres; the browser cookie holds only
  *   the id. NO expiry: a login lasts until the user taps Log out, or the
- *   Admin revokes/suspends/rejects the account. The cookie has no
- *   Expires/Max-Age (it lives as long as the browser keeps it) and the
- *   server row expires only after 100 years.
+ *   Admin revokes/suspends/rejects the account. The cookie carries a
+ *   1-year Max-Age (Han 2026-11-21, v35: "Log out မလုပ်မချင်း logging in
+ *   နေရမှာကို") so the browser keeps it across app restarts; before v35
+ *   it had no Expires/Max-Age (a session cookie) and the browser dropped
+ *   it when the app closed, so the login was forgotten. The server row
+ *   expires only after 100 years.
  * - The __Host- cookie prefix is used only over HTTPS (browsers reject a
  *   __Host- cookie without Secure); over plain HTTP (local dev) the
  *   plain name is used instead.
@@ -67,9 +70,13 @@ public static class Auth
             SameSite = SameSiteMode.Lax,
             Path = "/",
             IsEssential = true,
-            // No Expires/MaxAge: the cookie lives as long as the browser
-            // keeps it; the server session has no expiry either (see
+            // Stay logged in until Log out (Han 2026-11-21, v35): a 1-year
+            // Max-Age so the browser keeps the cookie across app restarts.
+            // Expires is set too (same date) for browsers that only honour
+            // it. The server session has no expiry either (see
             // CreateSessionAsync). Login ends only via Log out / Revoke.
+            MaxAge = TimeSpan.FromDays(365),
+            Expires = DateTimeOffset.UtcNow.AddDays(365),
         });
     }
 
