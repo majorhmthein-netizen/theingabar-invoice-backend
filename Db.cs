@@ -60,6 +60,8 @@ public static class AppDb
                 kbz_number TEXT,
                 qr BYTEA,
                 qr_content_type TEXT,
+                avatar BYTEA,
+                avatar_content_type TEXT,
                 status TEXT NOT NULL DEFAULT 'pending',
                 is_admin BOOLEAN NOT NULL DEFAULT FALSE,
                 auth_uid TEXT,
@@ -95,6 +97,10 @@ public static class AppDb
         await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone3 TEXT");
         await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone4 TEXT");
         await ExecAsync(conn, "ALTER TABLE meta ADD COLUMN IF NOT EXISTS phone5 TEXT");
+        // Profile picture (Han 2026-11-21): avatar bytes per user, added
+        // after the users table already existed — idempotent for live DBs.
+        await ExecAsync(conn, "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar BYTEA");
+        await ExecAsync(conn, "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_content_type TEXT");
         // Template thanks (Han 2026-11-21): the approved template's closing
         // line is "Thank you for choosing our service." — update the stored
         // value only when it still equals the old default (i.e. never
@@ -237,7 +243,7 @@ public static class AppDb
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL) FROM users WHERE id = @id", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await using var r = await cmd.ExecuteReaderAsync();
         return await r.ReadAsync() ? ReadUser(r) : null;
@@ -249,7 +255,7 @@ public static class AppDb
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL) FROM users WHERE lower(username) = lower(@u)", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE lower(username) = lower(@u)", conn);
         cmd.Parameters.AddWithValue("@u", username.Trim());
         await using var r = await cmd.ExecuteReaderAsync();
         return await r.ReadAsync() ? ReadUser(r) : null;
@@ -261,7 +267,7 @@ public static class AppDb
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL) FROM users WHERE phone = @p", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE phone = @p", conn);
         cmd.Parameters.AddWithValue("@p", phone.Trim());
         await using var r = await cmd.ExecuteReaderAsync();
         return await r.ReadAsync() ? ReadUser(r) : null;
@@ -273,7 +279,7 @@ public static class AppDb
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL) FROM users WHERE local_id = @l", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE local_id = @l", conn);
         cmd.Parameters.AddWithValue("@l", localId);
         await using var r = await cmd.ExecuteReaderAsync();
         return await r.ReadAsync() ? ReadUser(r) : null;
@@ -285,7 +291,7 @@ public static class AppDb
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL) FROM users ORDER BY created_at ASC, id ASC", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users ORDER BY created_at ASC, id ASC", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         var list = new List<UserRow>();
         while (await r.ReadAsync()) list.Add(ReadUser(r));
@@ -300,7 +306,7 @@ public static class AppDb
         await using var cmd = new NpgsqlCommand(
             "SELECT id, local_id, username, phone, password_hash, kbz_name, kbz_number, " +
             "status, is_admin, auth_uid, approved_by, approved_at, created_at, updated_at, " +
-            "(qr IS NOT NULL) FROM users WHERE status = 'approved' ORDER BY created_at ASC, id ASC", conn);
+            "(qr IS NOT NULL), (avatar IS NOT NULL) FROM users WHERE status = 'approved' ORDER BY created_at ASC, id ASC", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         var list = new List<UserRow>();
         while (await r.ReadAsync()) list.Add(ReadUser(r));
@@ -323,7 +329,7 @@ public static class AppDb
         r.IsDBNull(9) ? null : r.GetString(9),
         r.IsDBNull(10) ? null : r.GetString(10),
         r.IsDBNull(11) ? (DateTime?)null : r.GetDateTime(11),
-        r.GetDateTime(12), r.GetDateTime(13), r.GetBoolean(14));
+        r.GetDateTime(12), r.GetDateTime(13), r.GetBoolean(14), r.GetBoolean(15));
 
     // PIN login (2026-11-21): every new account starts with the default
     // PIN 1111, stored hashed in password_hash (the column is reused —
@@ -400,6 +406,30 @@ public static class AppDb
         await using var conn = await DataSource!.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT qr, qr_content_type FROM users WHERE id = @id", conn);
+        cmd.Parameters.AddWithValue("@id", id);
+        await using var r = await cmd.ExecuteReaderAsync();
+        if (!await r.ReadAsync() || r.IsDBNull(0)) return (null, null);
+        return ((byte[])r.GetValue(0), r.IsDBNull(1) ? "image/jpeg" : r.GetString(1));
+    }
+
+    /// <summary>Stores a user's profile picture (replaces any previous one).</summary>
+    public static async Task UpdateUserAvatarAsync(int id, byte[] avatar, string avatarType)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE users SET avatar = @a, avatar_content_type = @t, " +
+            "updated_at = now() WHERE id = @id", conn);
+        cmd.Parameters.AddWithValue("@a", avatar);
+        cmd.Parameters.AddWithValue("@t", avatarType);
+        cmd.Parameters.AddWithValue("@id", id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public static async Task<(byte[]? Data, string? ContentType)> GetUserAvatarAsync(int id)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT avatar, avatar_content_type FROM users WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await using var r = await cmd.ExecuteReaderAsync();
         if (!await r.ReadAsync() || r.IsDBNull(0)) return (null, null);
@@ -788,7 +818,7 @@ public sealed record UserRow(
     int Id, string LocalId, string Username, string Phone, string? PasswordHash,
     string? KbzName, string? KbzNumber, string Status, bool IsAdmin,
     string? AuthUid, string? ApprovedBy, DateTime? ApprovedAt,
-    DateTime CreatedAt, DateTime UpdatedAt, bool HasQr);
+    DateTime CreatedAt, DateTime UpdatedAt, bool HasQr, bool HasAvatar);
 
 public sealed record MetaRow(
     string Shop, string Group, string Services, string Address,

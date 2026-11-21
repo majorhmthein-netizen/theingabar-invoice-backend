@@ -290,6 +290,7 @@ app.MapGet("/qr/meta", async (HttpResponse res) =>
     var (data, type) = await AppDb.GetMetaQrAsync();
     if (data is null) { res.StatusCode = 404; return; }
     res.ContentType = type ?? "image/jpeg";
+    res.Headers.CacheControl = "no-store";
     await res.Body.WriteAsync(data);
 });
 
@@ -299,6 +300,24 @@ app.MapGet("/qr/user/{id:int}", async (int id, HttpResponse res) =>
     var (data, type) = await AppDb.GetUserQrAsync(id);
     if (data is null) { res.StatusCode = 404; return; }
     res.ContentType = type ?? "image/jpeg";
+    // User data that changes on re-upload: never cached anywhere, so a
+    // new QR shows immediately (the service worker used to cache /qr/
+    // cache-first, so re-uploads kept showing the old image).
+    res.Headers.CacheControl = "no-store";
+    await res.Body.WriteAsync(data);
+});
+
+/* ------------------------------------------------------------------ */
+/* Profile pictures (public — shown next to the user's name)            */
+/* ------------------------------------------------------------------ */
+
+app.MapGet("/avatar/user/{id:int}", async (int id, HttpResponse res) =>
+{
+    if (!AppDb.Available) { await SendJson(res, 503, new { error = "database unavailable" }); return; }
+    var (data, type) = await AppDb.GetUserAvatarAsync(id);
+    if (data is null) { res.StatusCode = 404; return; }
+    res.ContentType = type ?? "image/jpeg";
+    res.Headers.CacheControl = "no-store";
     await res.Body.WriteAsync(data);
 });
 
