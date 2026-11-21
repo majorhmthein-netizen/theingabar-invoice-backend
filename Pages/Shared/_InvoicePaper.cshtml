@@ -7,7 +7,12 @@
    the layout otherwise: the printed invoice format stays exactly as
    approved. Model: InvoicePaperModel. Razor auto-encodes all values. *@
 @model InvoicePaperModel
-<div class="invoice@(Paper.ItemTier(Model.Items.Count) == 2 ? " inv-n16" : Paper.ItemTier(Model.Items.Count) == 1 ? " inv-n11" : "")" id="invoice">
+@{
+    var tier = Paper.ItemTier(Model.Items.Count);
+    var tierCls = tier == 2 ? " inv-n16" : tier == 1 ? " inv-n11" : "";
+    var cls = "invoice" + tierCls + Paper.CompactClass(Model.Items.Count);
+}
+<div class="@cls" id="invoice">
   <div class="inv-letterhead">
     <div class="inv-brand">
       <div class="inv-brand-left">
