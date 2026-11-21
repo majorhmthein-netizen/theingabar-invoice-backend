@@ -62,9 +62,8 @@
       /* Watermark text (Han 2026-11-21): the shop name + id, small and
          faint, under the faded logo — so the watermark itself identifies
          the shop and the invoice. */
-      .inv-watermark .wm-shop{display:block;font-family:"U Moe","Noto Sans Myanmar",sans-serif;font-size:28px;color:#b7c2cd;margin-top:6px}
-      .inv-watermark .wm-group{display:block;font-family:"Archivo",sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#b7c2cd;margin-top:2px}
-      .inv-watermark .wm-id{display:block;font-family:"Archivo",sans-serif;font-size:12px;color:#b7c2cd;margin-top:4px}
+      .inv-watermark .wm-group{display:block;font-family:"Archivo",sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#D4AF37;margin-top:2px}
+      .inv-watermark .wm-id{display:block;font-family:"Archivo",sans-serif;font-size:12px;color:#D4AF37;margin-top:4px}
       /* Many items: shrink the description so a full 20-item invoice still
          fits on one page. Few items never grow past the default size (the max). */
       .invoice.inv-n11 table.inv-table{font-size:13px}
