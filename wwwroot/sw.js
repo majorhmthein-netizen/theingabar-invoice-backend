@@ -4,7 +4,7 @@
    Offline WRITES are impossible without app JavaScript: any form submit
    made offline fails in the browser, exactly as a plain website would.
    Cache name is bumped when the asset list changes. */
-const CACHE = 'theingabar-html-v15';
+const CACHE = 'theingabar-html-v16';
 const STATIC_ASSETS = [
   '/css/fonts.css',
   '/css/tailwind.css',
@@ -30,6 +30,8 @@ const STATIC_ASSETS = [
   '/icon-512.png',
   '/icon-maskable-512.png',
   '/apple-touch-icon.png',
+  '/img/theingabar-logo-header.jpg',
+  '/img/theingabar-wordmark.png',
   '/seed-qr.jpg'
 ];
 
