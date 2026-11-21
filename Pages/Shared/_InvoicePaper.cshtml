@@ -1,5 +1,5 @@
 @* Invoice paper — the APPROVED Safari template layout (Han 2026-11-21):
-   two-column letterhead (U Moe title left, INVOICE + date + no. right),
+   two-column letterhead (U Moe title left, INVOICE + id right),
    boxed customer panel, navy items-table header, boxed payment panel,
    two signature lines, thanks + group line. Two Han-ordered changes vs
    the template: title stays U Moe (not the template's serif) and both
@@ -16,8 +16,7 @@
       </div>
       <div class="inv-brand-right">
         <div class="inv-word">INVOICE</div>
-        <div class="inv-date"><span class="lbl">Date:</span> @Paper.FmtDateLong(Model.Date)</div>
-        <div class="inv-no"><span class="lbl">No.</span> @Model.No</div>
+        <div class="inv-no"><span class="lbl">id:</span> @Model.No</div>
       </div>
     </div>
     <div class="inv-services" id="pServices">@Model.Meta.Services</div>
