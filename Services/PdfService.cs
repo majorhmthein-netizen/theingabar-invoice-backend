@@ -314,11 +314,28 @@ public static class PdfService
                         });
                     });
 
-                    // --- QR alone (Han 2026-11-21): the payment box is
-                    // gone; only the QR stays, centred under the table.
-                    if (qr is not null)
-                        col.Item().PaddingTop(cQrPadT).AlignCenter().Width(cQr).Border(1).BorderColor("#dfe5ec").Padding(4)
-                            .Image(qr).FitArea();
+                    // --- Payment box (Han 2026-11-21, restored from the
+                    // 60214 layout): the KBZ Pay name/number + QR, so the
+                    // customer sees who to pay — but WITHOUT the "PAYMENT"
+                    // heading, and the "Scan the QR" line moved ABOVE the
+                    // phone-number line (it sat below the number before).
+                    col.Item().PaddingTop(cQrPadT).Border(1).BorderColor("#dfe5ec").Padding(10).Row(row =>
+                    {
+                        row.RelativeItem().AlignMiddle().Column(c =>
+                        {
+                            c.Item().Text("Scan the QR code with KBZPay to pay.").Style(Latin(10.5f, 400, "#5b6a7a"));
+                            c.Item().PaddingTop(6).Text(t =>
+                            {
+                                t.Span("KBZ Pay").Style(Latin(11f, 700, "#0b5394"));
+                                t.Span(" — No. ").Style(Latin(11f, 400, "#14202e"));
+                                t.Span(payNum).Style(Latin(11f, 700, "#0b5394"));
+                                t.Span(" — Name: ").Style(Latin(11f, 400, "#14202e"));
+                                t.Span(payName).Style(Latin(11f, 700, "#0b5394"));
+                            });
+                        });
+                        if (qr is not null)
+                            row.ConstantItem(cQr).Border(1).BorderColor("#dfe5ec").Padding(4).Image(qr).FitArea();
+                    });
 
                     // --- thanks (each line centred: AlignCenter belongs on the
                     // text item itself — on the full-width column it does nothing) ---
