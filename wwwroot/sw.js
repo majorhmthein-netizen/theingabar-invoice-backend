@@ -4,18 +4,20 @@
    Offline WRITES are impossible without app JavaScript: any form submit
    made offline fails in the browser, exactly as a plain website would.
    Cache name is bumped when the asset list changes. */
-const CACHE = 'theingabar-html-v13';
+const CACHE = 'theingabar-html-v14';
 const STATIC_ASSETS = [
   '/css/fonts.css',
   '/css/tailwind.css',
   '/css/invoice.css',
   '/css/app2.css',
   '/css/export.css',
+  '/css/cropper.css',
   '/js/sw-register.js',
   '/js/nav.js',
   '/js/countdown.js',
   '/js/login-loading.js',
   '/js/export.js',
+  '/js/cropper.js',
   '/fonts/noto-sans-myanmar-myanmar.woff2',
   '/fonts/noto-sans-myanmar-latin.woff2',
   '/fonts/archivo-latin.woff2',
@@ -48,12 +50,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  // Never cache API responses, exports, or auth flows.
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
+  // Never cache API responses, exports, auth flows, or per-user images
+  // (QR codes and avatars change on re-upload — caching them served
+  // the old image after a change).
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/') ||
+      url.pathname.startsWith('/qr/') || url.pathname.startsWith('/avatar/')) return;
   if (url.pathname.endsWith('.pdf') || url.pathname.endsWith('.png')) return;
   const isStatic = url.pathname.startsWith('/css/') || url.pathname.startsWith('/fonts/') ||
     url.pathname.startsWith('/js/') || url.pathname === '/manifest.webmanifest' ||
-    url.pathname === '/seed-qr.jpg' || url.pathname.startsWith('/qr/');
+    url.pathname === '/seed-qr.jpg';
   event.respondWith(
     isStatic
       ? caches.match(event.request, { ignoreSearch: true }).then((cached) =>
