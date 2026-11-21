@@ -1,10 +1,12 @@
 /* Theingabar Invoice — cache-only service worker (HTML-only carve-out).
-   No app logic lives here: it only caches static assets and already
-   visited pages so the app shell stays readable on weak signal.
+   No app logic lives here: it caches the app shell (static assets +
+   the Home page) and the pages the user visits, and refreshes those
+   cached pages whenever the network answers, so the app keeps working
+   offline with the last-loaded data (Han 2026-11-21).
    Offline WRITES are impossible without app JavaScript: any form submit
    made offline fails in the browser, exactly as a plain website would.
-   Cache name is bumped when the asset list changes. */
-const CACHE = 'theingabar-html-v18';
+   Cache name is bumped when the asset list or the caching logic changes. */
+const CACHE = 'theingabar-html-v19';
 const STATIC_ASSETS = [
   '/',
 
@@ -13,7 +15,6 @@ const STATIC_ASSETS = [
   '/css/invoice.css',
   '/css/app2.css',
   '/css/export.css',
-  '/css/cropper.css',
   '/js/sw-register.js',
   '/js/nav.js',
   '/js/countdown.js',
@@ -51,6 +52,44 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// App pages (everything not static): the app's DATA lives in these
+// server-rendered pages (Home, invoice pages, profile...), so they are
+// cached on every successful visit and the cache is refreshed whenever
+// the network answers — that is what makes the app work offline with
+// reasonably fresh data (Han 2026-11-21). Two rules:
+//   - If a cached copy exists, the network gets 3 s; a slow or dead
+//     connection serves the cached page at once instead of hanging,
+//     and a late network answer still refreshes the cache in the
+//     background for the next visit.
+//   - If no cached copy exists, wait for the network (a first visit
+//     must not fail just because the connection is slow); if the
+//     network fails too, fall back to the cached Home page rather
+//     than the browser's offline error page.
+function fetchWithTimeout(request, ms) {
+  return new Promise(function (resolve, reject) {
+    var done = false;
+    var timer = setTimeout(function () {
+      if (!done) { done = true; reject(new Error('timeout')); }
+    }, ms);
+    fetch(request).then(function (res) {
+      if (!done) { done = true; clearTimeout(timer); resolve(res); }
+      else if (res && res.ok) {
+        // Late answer: refresh the cache for the next visit.
+        var copy = res.clone();
+        caches.open(CACHE).then(function (cache) { cache.put(request, copy); });
+      }
+    }, function (err) {
+      if (!done) { done = true; clearTimeout(timer); reject(err); }
+    });
+  });
+}
+
+function putInCache(request, res) {
+  if (!res || !res.ok) return;
+  var copy = res.clone();
+  caches.open(CACHE).then(function (cache) { cache.put(request, copy); });
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
@@ -63,20 +102,31 @@ self.addEventListener('fetch', (event) => {
   const isStatic = url.pathname.startsWith('/css/') || url.pathname.startsWith('/fonts/') ||
     url.pathname.startsWith('/js/') || url.pathname === '/manifest.webmanifest' ||
     url.pathname === '/seed-qr.jpg';
-  event.respondWith(
-    isStatic
-      ? caches.match(event.request, { ignoreSearch: true }).then((cached) =>
-          cached || fetch(event.request).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-            return res;
-          }))
-      : fetch(event.request).then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-          }
+  if (isStatic) {
+    event.respondWith(
+      caches.match(event.request, { ignoreSearch: true }).then((cached) =>
+        cached || fetch(event.request).then((res) => {
+          putInCache(event.request, res);
           return res;
-        }).catch(() => caches.match(event.request, { ignoreSearch: true }))
+        }))
+    );
+    return;
+  }
+  // App pages: network-first, but never hang on a dead/slow connection
+  // when a cached copy exists; fall back to cached Home when nothing
+  // else is available.
+  event.respondWith(
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => {
+      if (cached) {
+        return fetchWithTimeout(event.request, 3000).then((res) => {
+          putInCache(event.request, res);
+          return res;
+        }).catch(() => cached);
+      }
+      return fetch(event.request).then((res) => {
+        putInCache(event.request, res);
+        return res;
+      }).catch(() => caches.match('/', { ignoreSearch: true }));
+    })
   );
 });
