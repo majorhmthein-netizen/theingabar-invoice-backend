@@ -1,17 +1,17 @@
 @* Invoice paper — the APPROVED Safari template layout (Han 2026-11-21):
-   two-column letterhead (U Moe title left, INVOICE + id right),
+   two-column letterhead (gold logo left, INVOICE + id right),
    boxed customer panel, navy items-table header, boxed payment panel,
-   two signature lines, thanks + group line. Two Han-ordered changes vs
-   the template: title stays U Moe (not the template's serif) and both
-   "Theingabar Automotive Group" lines are gold. Do not change the layout
-   otherwise: the printed invoice format stays exactly as approved.
-   Model: InvoicePaperModel. Razor auto-encodes all values. *@
+   two signature lines, thanks + group line. Han-ordered changes vs
+   the template: title is the gold logo (trial 2026-11-21, was U Moe text)
+   and both "Theingabar Automotive Group" lines are gold. Do not change
+   the layout otherwise: the printed invoice format stays exactly as
+   approved. Model: InvoicePaperModel. Razor auto-encodes all values. *@
 @model InvoicePaperModel
 <div class="invoice" id="invoice">
   <div class="inv-letterhead">
     <div class="inv-brand">
       <div class="inv-brand-left">
-        <div class="inv-shop" id="pShop">@Model.Meta.Shop</div>
+        <img class="inv-logo" id="pShop" src="/img/theingabar-logo-header.jpg" alt="သိန်းကမ္ဘာ" />
         <div class="inv-group" id="pGroup">@Model.Meta.Group</div>
       </div>
       <div class="inv-brand-right">
