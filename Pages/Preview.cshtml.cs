@@ -90,8 +90,10 @@ public class PreviewModel : AppPageModel
             no = await AppDb.PeekNextNumberAsync(Date);
         }
         var (payName, payNum, qrSrc) = Paper.PaymentFor(Me!.User, Meta!);
+        var qrCacheKey = Me!.User.HasQr ? $"tgb-qr-{Me!.User.Id}"
+            : Meta!.HasQr ? "tgb-qr-meta" : "";
         PaperModel = new InvoicePaperModel(Meta!, payName, payNum, qrSrc,
-            Customer, Date, no, Items, Items.Sum(i => i.Amount), Deposit, PaperSize);
+            Customer, Date, no, Items, Items.Sum(i => i.Amount), Deposit, PaperSize, qrCacheKey);
         return Page();
     }
 }

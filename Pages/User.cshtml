@@ -7,7 +7,7 @@
 <div class="panel">
   @if (Model.User!.HasAvatar)
   {
-    <p><img class="profile-avatar" src="/avatar/user/@Model.User.Id" alt="@Model.User.Username" /></p>
+    <p><img class="profile-avatar" data-cache="tgb-avatar-@Model.User.Id" src="/avatar/user/@Model.User.Id" alt="@Model.User.Username" /></p>
   }
   <h2>@Model.User!.Username</h2>
   <p>Phone: @Model.User.Phone<br />Status: <b>@Model.User.Status</b></p>

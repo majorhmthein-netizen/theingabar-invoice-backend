@@ -34,7 +34,7 @@
   {
     @if (me.User.HasAvatar)
     {
-      <a class="mini-btn avatar-link" href="/user"><img class="avatar-img" src="/avatar/user/@me.User.Id" alt="" />@me.User.Username</a>
+      <a class="mini-btn avatar-link" href="/user"><img class="avatar-img" data-cache="tgb-avatar-@me.User.Id" src="/avatar/user/@me.User.Id" alt="" />@me.User.Username</a>
     }
     else
     {
@@ -61,6 +61,7 @@
 
 <script src="/js/sw-register.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/upload-cache.js"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
