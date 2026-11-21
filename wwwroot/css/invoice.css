@@ -174,8 +174,21 @@
         .inv-thanks{break-inside:avoid}
       }
       @media print{
-        html,body{height:auto; overflow:visible}
-        .wrap{height:auto; display:block; padding:0}
+        /* Fill the page (Han 2026-11-21: "မပြည့်ရင် ပြည့်အောင် expand"):
+           the invoice was shorter than the page, leaving white space
+           below the thanks line. The invoice is a flex column as tall
+           as the page, and the QR is pushed to the bottom with
+           margin-top:auto, so the slack sits between the table and the
+           QR instead of below the thanks line. The heights are
+           percentages, so it fills whatever paper the print dialog
+           uses (Letter or A4, full or half-A4) — no fixed mm height.
+           min-height (not height) lets a long invoice grow past one
+           page instead of clipping. */
+        html,body{height:100%; overflow:visible}
+        .wrap{height:100%; display:block; padding:0}
+        .scroll{height:100%; overflow:visible}
+        .invoice{display:flex; flex-direction:column; min-height:100%}
+        .inv-qr{margin-top:auto}
         .pages{display:block; overflow:visible}
         .page{display:block !important}
         .page>.panel{overflow:visible}
