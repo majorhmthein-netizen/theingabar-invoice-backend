@@ -257,6 +257,24 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .user-actions .mini-btn { justify-content: flex-start; }
 .mini-btn.danger { background: #a83232; box-shadow: 0 2px 6px rgba(168, 50, 50, .25); }
 .mini-btn.danger:hover { background: #8f2b2b; box-shadow: 0 6px 14px rgba(168, 50, 50, .3); }
+/* --- header notification bell + badge (Han 2026-11-21, v34) --- */
+.noti-bell { position: relative; padding: 6px 10px; }
+.noti-bell svg { display: block; }
+.noti-badge {
+  position: absolute; top: -6px; right: -6px;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: #c0392b; color: #fff;
+  font-size: 0.72rem; font-weight: 800; line-height: 18px; text-align: center;
+}
+/* --- notification list (v34) --- */
+.noti-row.noti-done { opacity: .6; }
+.noti-row.noti-overdue { background: #fdf0ef; }
+.noti-row.noti-overdue:hover { background: #fbe7e5; }
+/* --- payment choice on the invoice form (v34) --- */
+.pay-choice { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.pay-choice legend { font-weight: 700; padding: 0 4px; }
+.pay-choice label { display: inline-flex; gap: 6px; align-items: center; margin-right: 14px; }
+.pay-choice .hint { display: block; margin-top: 6px; }
 .log-no { font-weight: 700; color: var(--navy); }
 .ok { color: #1e7a34; font-weight: 700; }
 .totals-line {
