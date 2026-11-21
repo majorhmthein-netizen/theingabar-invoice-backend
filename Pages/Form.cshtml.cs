@@ -101,6 +101,10 @@ public class FormModel : AppPageModel
     public async Task<IActionResult> OnPostSaveAsync()
     {
         if (await NeedWriteAsync() is { } redirect) return redirect;
+        // The invoice is issued now, so drop the preview draft kept in
+        // TempData: the next new-invoice form must be fresh, not pre-filled
+        // with the just-issued invoice.
+        TempData.Remove("Draft");
         LoadDraft();
         Error = Paper.ValidateDraft(Date, Customer, Items);
         if (Error is not null)
