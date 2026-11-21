@@ -173,14 +173,20 @@ public static class PdfService
             var cThanksPadT = new[] { 22f, 14f, 8f, 5f, 3f }[ct];
             var cThanksPadT2 = new[] { 12f, 8f, 6f, 4f, 3f }[ct];
             var cThanksGroupPadT = new[] { 3f, 3f, 3f, 2f, 1f }[ct];
+            // Paper size (Han 2026-11-21): A4 (full page) is the default;
+            // a half-A4 invoice is the same A4 layout scaled by 0.70 onto
+            // an A5 page, so it still fits on one page (the printer's
+            // "fit to page" does the same shrink). Margins scale too.
+            var isHalf = row.PaperSize == "Half";
+            var s = isHalf ? 0.70f : 1.0f;
             container.Page(page =>
             {
-                page.Size(PageSizes.A4);
-                page.MarginHorizontal(42);
-                page.MarginTop(cMarginTop);
-                page.MarginBottom(cMarginBottom);
+                page.Size(isHalf ? PageSizes.A5 : PageSizes.A4);
+                page.MarginHorizontal(42 * s);
+                page.MarginTop(cMarginTop * s);
+                page.MarginBottom(cMarginBottom * s);
                 page.DefaultTextStyle(TextStyle.Default.FontFamily("Noto Sans Myanmar"));
-                page.Content().Column(col =>
+                page.Content().Scale(s).Column(col =>
                 {
                     // --- letterhead: top rule + brand row (template layout) ---
                     col.Item().LineHorizontal(3).LineColor("#14202e");
@@ -250,9 +256,11 @@ public static class PdfService
                             var wm = WatermarkBytes();
                             if (wm is not null)
                                 c.Item().AlignCenter().Width(220).Image(wm).FitArea();
-                            c.Item().PaddingTop(6).AlignCenter().Text(meta.Shop).Style(ShopTitle(22, "#b7c2cd"));
-                            c.Item().PaddingTop(2).AlignCenter().Text(meta.Group).Style(Latin(8, 700, "#b7c2cd").LetterSpacing(0.18f));
-                            c.Item().PaddingTop(4).AlignCenter().Text("id: " + (row.No ?? "")).Style(Latin(10, 700, "#b7c2cd"));
+                            // No shop-name text line: the logo already carries
+                            // the gold သိန်းကမ္ဘာ wordmark (Han 2026-11-21).
+                            // Group + id sit right under it, in the shop gold.
+                            c.Item().PaddingTop(2).AlignCenter().Text(meta.Group).Style(Latin(8, 700, "#D4AF37").LetterSpacing(0.18f));
+                            c.Item().PaddingTop(4).AlignCenter().Text("id: " + (row.No ?? "")).Style(Latin(10, 700, "#D4AF37"));
                         });
                         layers.PrimaryLayer().Table(t =>
                     {
@@ -323,6 +331,81 @@ public static class PdfService
                     {
                         c.Item().PaddingTop(cThanksPadT2).AlignCenter().Text(meta.Thanks).Style(Latin(11.25f, 700, "#0b5394").LetterSpacing(0.02f));
                         c.Item().PaddingTop(cThanksGroupPadT).AlignCenter().Text(Paper.TitleCase(meta.Group)).Style(Latin(10.5f, 600, "#5b6a7a"));
+                    });
+                });
+            });
+        });
+        return doc.GeneratePdf();
+    }
+
+    /// <summary>A month's log as a PDF file (လချုပ်, Han 2026-11-21):
+    /// the month's invoices as a table (No, Date, Customer, Amount) plus
+    /// the month total. Saved as a file, not printed. Plain A4, same
+    /// fonts and navy header as the invoice paper.</summary>
+    public static async Task<byte[]> RenderMonthLogAsync(
+        string label, List<InvoiceRow> rows, long total)
+    {
+        EnsureFonts();
+        var meta = await AppDb.GetMetaAsync();
+        var doc = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.MarginHorizontal(42);
+                page.MarginTop(30);
+                page.MarginBottom(28);
+                page.DefaultTextStyle(TextStyle.Default.FontFamily("Noto Sans Myanmar"));
+                page.Content().Column(col =>
+                {
+                    col.Item().LineHorizontal(3).LineColor("#14202e");
+                    col.Item().PaddingTop(12).Text(meta.Shop)
+                        .Style(ShopTitle(26, "#0b5394"));
+                    col.Item().PaddingTop(4).Text(meta.Group)
+                        .Style(Latin(9, 700, "#D4AF37").LetterSpacing(0.18f));
+                    col.Item().PaddingTop(10).Text("Monthly Log — " + label)
+                        .Style(Latin(14, 700, "#14202e"));
+                    col.Item().PaddingTop(4).Text(
+                            rows.Count + (rows.Count == 1 ? " invoice" : " invoices"))
+                        .Style(Myanmar(10.5f, 400, "#5b6a7a"));
+                    col.Item().PaddingTop(14).Table(t =>
+                    {
+                        t.ColumnsDefinition(c =>
+                        {
+                            c.ConstantColumn(70);
+                            c.ConstantColumn(90);
+                            c.RelativeColumn();
+                            c.ConstantColumn(110);
+                        });
+                        t.Header(h =>
+                        {
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .Text("No.").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .Text("Date").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .Text("Customer / Vehicle").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                                .AlignRight().Text("Amount (MMK)").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                        });
+                        foreach (var r in rows)
+                        {
+                            t.Cell().PaddingVertical(6).PaddingHorizontal(8)
+                                .Text(r.No ?? "").Style(Myanmar(10.9f, 700, "#14202e"));
+                            t.Cell().PaddingVertical(6).PaddingHorizontal(8)
+                                .Text(Paper.FmtDate(r.Date)).Style(Myanmar(10.9f, 400, "#14202e"));
+                            t.Cell().PaddingVertical(6).PaddingHorizontal(8)
+                                .Text(string.IsNullOrWhiteSpace(r.Customer) ? "—" : r.Customer)
+                                .Style(Myanmar(10.9f, 400, "#14202e"));
+                            t.Cell().PaddingVertical(6).PaddingHorizontal(8)
+                                .AlignRight().Text(Paper.Fmt(r.Total)).Style(Myanmar(10.9f, 700, "#000000"));
+                        }
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8).Text("");
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8).Text("");
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
+                            .Text("Total (MMK)").Style(Myanmar(12.4f, 800, "#14202e"));
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
+                            .AlignRight().Text(Paper.Fmt(total)).Style(Myanmar(12.4f, 800, "#0b5394"));
                     });
                 });
             });
