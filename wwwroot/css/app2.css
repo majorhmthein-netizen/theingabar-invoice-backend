@@ -115,8 +115,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 /* A form that fills its panel and lets one child scroll. */
 form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-@media (min-width: 900px) {
+@media (min-width: 700px) {
+  /* Centred column on tablets and landscape phones (a landscape phone
+     is ~890 CSS px wide — the old 900px breakpoint never fired there,
+     so the layout stretched edge to edge). */
   .wrap { max-width: 860px; margin: 0 auto; }
+}
+/* Short viewports (landscape phone): tighten the chrome so the scroll
+   area keeps room for the content. */
+@media (max-height: 500px) {
+  .panel { padding: 12px; margin-bottom: 8px; }
+  .panel h2 { margin-bottom: 6px; }
+  .wrap { padding: 8px; }
 }
 
 /* --- panels, forms, buttons (Tailwind covers most; these are the rest) --- */
@@ -186,6 +196,25 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .hint { color: var(--muted); font-size: 0.85rem; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .sp { flex: 1; }
+
+/* --- profile picture + QR thumbnails --- */
+/* Round avatar in the toolbar, next to the username. */
+.avatar-img {
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, .6); flex: 0 0 auto;
+}
+.toolbar .avatar-link { display: inline-flex; align-items: center; gap: 6px; }
+/* Round avatar on the profile page. */
+.profile-avatar {
+  width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--line); box-shadow: var(--shadow-sm);
+}
+/* Small square thumbnail for the current QR on My QR (not full-size). */
+.qr-thumb {
+  width: 72px; height: 72px; object-fit: contain;
+  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  padding: 4px;
+}
 
 /* --- log --- */
 .log-row {
