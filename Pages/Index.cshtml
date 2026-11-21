@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Home";
 }
+<div class="scroll">
 <div class="panel">
   <h2 class="shop-title">@Model.Meta?.Shop</h2>
   <p class="hint">@Model.Meta?.Group<br />@Model.Meta?.Services<br />@Model.Meta?.Address — @Model.Meta?.PhonesDisplay</p>
@@ -24,6 +25,7 @@
   <h2>Income</h2>
   <div class="totals-line"><span>This week (@Paper.FmtDate(Model.WeekFrom) – @Paper.FmtDate(Model.WeekTo))</span><span>@Paper.Fmt(Model.WeekTotal) MMK</span></div>
   <div class="totals-line"><span>This month</span><span>@Paper.Fmt(Model.MonthTotal) MMK</span></div>
+</div>
 </div>
 
 <div class="panel panel-fill">

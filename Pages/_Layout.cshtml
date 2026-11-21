@@ -32,7 +32,14 @@
   }
   else
   {
-    <a class="mini-btn" href="/user">@me.User.Username</a>
+    @if (me.User.HasAvatar)
+    {
+      <a class="mini-btn avatar-link" href="/user"><img class="avatar-img" src="/avatar/user/@me.User.Id" alt="" />@me.User.Username</a>
+    }
+    else
+    {
+      <a class="mini-btn" href="/user">@me.User.Username</a>
+    }
   }
 </header>
 

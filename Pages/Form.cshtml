@@ -7,11 +7,11 @@
   <h2>@(Model.EditId is null ? "New invoice" : "Edit invoice")</h2>
   <p class="hint">Fill in the items, then Preview to see the invoice paper, or Save to issue it. Totals are computed on the server when you preview or save.</p>
   <form method="post" class="fill">
-    <label class="fld"><span>Date</span><input name="Date" type="date" value="@Model.Date" required /></label>
-    <label class="fld"><span>Customer / Vehicle</span><input name="Customer" value="@Model.Customer" required maxlength="200" /></label>
     <input type="hidden" name="RowCount" value="@Model.RowCount" />
     <input type="hidden" name="EditId" value="@Model.EditId" />
     <div class="scroll">
+    <label class="fld"><span>Date</span><input name="Date" type="date" value="@Model.Date" required /></label>
+    <label class="fld"><span>Customer / Vehicle</span><input name="Customer" value="@Model.Customer" required maxlength="200" /></label>
     <table class="items">
       <thead><tr><th style="width:28px">No.</th><th>Description</th><th style="width:110px">Amount (MMK)</th><th style="width:40px"></th></tr></thead>
       <tbody>

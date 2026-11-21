@@ -75,6 +75,20 @@ public class FormModel : AppPageModel
         return Page();
     }
 
+    /// <summary>Preview's "Back to form": the draft is posted back and
+    /// re-rendered, so nothing typed is lost. (Was missing until
+    /// 2026-11-21: with no handler the POST rendered the page with no
+    /// handler run, so LoadCommonAsync never set Me — the toolbar showed
+    /// Log in / Sign up — and LoadDraft never ran, so the form came
+    /// back empty.)</summary>
+    public async Task<IActionResult> OnPostBackAsync()
+    {
+        if (await NeedWriteAsync() is { } redirect) return redirect;
+        LoadDraft();
+        FillForRender(Items, RowCount);
+        return Page();
+    }
+
     public async Task<IActionResult> OnPostRemoveRowAsync(int row)
     {
         if (await NeedWriteAsync() is { } redirect) return redirect;

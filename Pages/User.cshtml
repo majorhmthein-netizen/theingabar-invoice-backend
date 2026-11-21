@@ -3,7 +3,12 @@
 @{
     ViewData["Title"] = "User";
 }
+<div class="scroll">
 <div class="panel">
+  @if (Model.User!.HasAvatar)
+  {
+    <p><img class="profile-avatar" src="/avatar/user/@Model.User.Id" alt="@Model.User.Username" /></p>
+  }
   <h2>@Model.User!.Username</h2>
   <p>Phone: @Model.User.Phone<br />Status: <b>@Model.User.Status</b></p>
   @if (!Model.CanWrite)
@@ -14,6 +19,7 @@
 
 <div class="panel">
   <h2>Profile</h2>
+  <p><a class="btn menu-btn" href="/User/ProfilePic">Profile picture</a></p>
   <p><a class="btn menu-btn" href="/User/ChangePin">Change PIN</a></p>
   <p><a class="btn menu-btn" href="/User/MyQr">My QR</a></p>
   @if (Model.CanWrite)
@@ -21,4 +27,5 @@
     <p><a class="btn gold menu-btn" href="/form">New invoice</a></p>
   }
   <p><a class="btn ghost menu-btn" href="/logout">Log out</a></p>
+</div>
 </div>
