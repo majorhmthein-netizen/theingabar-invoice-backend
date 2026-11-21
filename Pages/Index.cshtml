@@ -37,12 +37,11 @@
   }
   @foreach (var inv in Model.Recent)
   {
-    <div class="log-row">
+    <div class="log-row" data-href="/invoice/@inv.Id">
       <span class="log-no">@inv.No</span>
       <span>@Paper.FmtDate(inv.Date)</span>
       <span>@inv.Customer</span>
       <span class="amt">@Paper.Fmt(inv.Total) MMK</span>
-      <a href="/invoice/@inv.Id">View</a>
     </div>
   }
   </div>
