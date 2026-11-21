@@ -14,10 +14,7 @@
       }
       .inv-letterhead{border-top:3px solid #14202e;padding-top:16px}
       .inv-brand{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-      .inv-shop{
-        font-family:"U Moe","Noto Serif Myanmar","Noto Sans Myanmar",serif;font-weight:900;
-        font-size:44px;line-height:1.2;color:#0b5394;letter-spacing:.01em;
-      }
+      .inv-logo{display:block;height:72px;width:auto}
       .inv-group{font-family:"Archivo",sans-serif;font-weight:700;letter-spacing:.18em;font-size:12.5px;color:#D4AF37;margin-top:6px}
       .inv-brand-right{text-align:right}
       .inv-word{
@@ -78,7 +75,7 @@
       .inv-thanks-group{display:block;margin-top:4px;font-size:14px;color:#5b6a7a;font-weight:600}
       @media (max-width:560px){
         .invoice{padding:22px 18px 20px}
-        .inv-shop{font-size:34px}
+        .inv-logo{height:56px}
         .inv-word{font-size:22px}
         .inv-custdate{text-align:left}
         .inv-paybox img.p-qr{width:112px;height:112px}

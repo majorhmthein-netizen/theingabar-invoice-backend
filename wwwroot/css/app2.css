@@ -1,21 +1,23 @@
 /* Theingabar Invoice — HTML-only app layout.
-   PREMIUM THEME (2026-11-21, Han): navy / white / black / gold.
-   Navy #0b5394 is the brand, white panels, black ink, gold #b98a1c/#d4af37
-   accents. Flex layouts, soft shadows, hover lift on everything
-   tappable. The invoice paper itself is styled only by css/invoice.css
-   (frozen) — this file is the APP chrome around it. */
+   GLASS THEME (2026-11-21, Han): dark blue / light gray / gold.
+   Dark blue #141f3d is the brand (matches the gold logo), light gray
+   page background, gold #b98a1c/#d4af37 accents. Panels are glass:
+   translucent white + backdrop blur over the gray. Flex layouts, soft
+   shadows, hover lift on everything tappable. The invoice paper itself
+   is styled only by css/invoice.css (frozen) — this file is the APP
+   chrome around it. */
 
 :root {
-  --navy: #0b5394;
-  --navy-deep: #0a467e;
-  --navy-dark: #082f57;
+  --navy: #1b2a4a;
+  --navy-deep: #141f3d;
+  --navy-dark: #0e1626;
   --gold: #b98a1c;
   --gold-bright: #d4af37;
   --gold-soft: #d9a92f;
   --ink: #14202e;
   --black: #000;
   --white: #fff;
-  --bg: #eef1f5;
+  --bg: #dfe3e8;
   --line: #e3e8ef;
   --muted: #5b6a7a;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05), 0 4px 12px rgba(16, 24, 40, .04);
@@ -27,7 +29,7 @@ html, body { height: 100%; }
 body {
   margin: 0;
   font-family: "Noto Sans Myanmar", "Archivo", sans-serif;
-  background: linear-gradient(180deg, #f5f7fa 0%, #e9edf2 100%);
+  background: linear-gradient(160deg, #eceef1 0%, #dde1e6 55%, #d2d7dd 100%);
   color: var(--ink);
   overflow: hidden; /* fixed screen: panels scroll, the page does not */
   -webkit-tap-highlight-color: transparent;
@@ -49,19 +51,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   display: flex; align-items: center; gap: 8px;
   min-height: 52px; padding: 6px 12px;
   padding-top: max(6px, env(safe-area-inset-top));
-  background: linear-gradient(180deg, #0d5da6 0%, var(--navy) 100%);
+  background: linear-gradient(180deg, rgba(34, 52, 92, .94) 0%, rgba(20, 31, 61, .94) 100%);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
   color: #fff;
   border-bottom: 2px solid var(--gold);
-  box-shadow: 0 2px 12px rgba(8, 47, 87, .35);
+  box-shadow: 0 2px 12px rgba(14, 22, 38, .4);
 }
 .toolbar a { color: #fff; text-decoration: none; }
-/* Shop wordmark in the toolbar — U Moe handwritten, like the paper title. */
+/* Shop wordmark in the toolbar — gold logo (Han 2026-11-21). */
 .t-title {
-  font-family: "U Moe", "Noto Serif Myanmar", "Noto Sans Myanmar", serif;
-  font-weight: 400; font-size: 1.3rem; line-height: 1;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center;
 }
-.t-title .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold-soft); display: inline-block; box-shadow: 0 0 6px rgba(217, 169, 47, .8); }
+.t-logo { display: block; height: 34px; width: auto; }
 .toolbar-sp { flex: 1; }
 /* Translucent pill mini-buttons on the navy toolbar (Log in / Sign up /
    username / Log out). On white panels the same buttons use the solid
@@ -78,19 +80,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
   display: flex; justify-content: center;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-  background: #fff; border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, .6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-top: 1px solid rgba(255, 255, 255, .65);
   box-shadow: 0 -4px 16px rgba(16, 24, 40, .06);
 }
 .invoice-fab {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
   min-height: 48px; padding: 12px 30px; border-radius: 999px; text-decoration: none;
-  color: #fff; background: linear-gradient(180deg, #0d5da6 0%, var(--navy-deep) 100%);
+  color: #fff; background: linear-gradient(180deg, #22345c 0%, var(--navy-deep) 100%);
   font-weight: 800; font-size: 1rem;
-  box-shadow: 0 4px 14px rgba(11, 83, 148, .4), inset 0 1px 0 rgba(255, 255, 255, .25);
+  box-shadow: 0 4px 14px rgba(20, 31, 61, .4), inset 0 1px 0 rgba(255, 255, 255, .25);
   transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.invoice-fab:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(11, 83, 148, .45), inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 0 2px rgba(212, 175, 55, .45); }
-.invoice-fab:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(11, 83, 148, .3); }
+.invoice-fab:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(20, 31, 61, .45), inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 0 2px rgba(212, 175, 55, .45); }
+.invoice-fab:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(20, 31, 61, .3); }
 
 /* double-back-to-exit toast */
 .exit-toast {
@@ -130,10 +135,24 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 }
 
 /* --- panels, forms, buttons (Tailwind covers most; these are the rest) --- */
+/* Glass boxes: translucent white + backdrop blur over the light gray
+   page background (Han 2026-11-21). */
 .panel {
-  background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+  background: rgba(255, 255, 255, .55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  backdrop-filter: blur(14px) saturate(1.25);
+  border: 1px solid rgba(255, 255, 255, .65); border-radius: 16px;
   padding: 16px; margin-bottom: 12px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 8px 28px rgba(20, 35, 60, .12);
+}
+/* Home top boxes: row in portrait, column in landscape (Han 2026-11-21). */
+.boxes { display: flex; gap: 12px; }
+@media (orientation: portrait) {
+  .boxes { flex-direction: row; }
+  .boxes > .panel { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
+}
+@media (orientation: landscape) {
+  .boxes { flex-direction: column; }
 }
 .panel h2 {
   margin: 0 0 10px; font-size: 1.05rem; font-weight: 800; color: var(--navy);
@@ -162,7 +181,7 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 }
 .fld input:focus, .fld select:focus, .fld textarea:focus {
   border-color: var(--navy); outline: none;
-  box-shadow: 0 0 0 3px rgba(11, 83, 148, .15);
+  box-shadow: 0 0 0 3px rgba(27, 42, 74, .15);
 }
 .fld textarea { min-height: 72px; }
 .btn, .mini-btn {
@@ -170,11 +189,11 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
   min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 0;
   background: var(--navy); color: #fff; font-weight: 700; text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(11, 83, 148, .25);
+  box-shadow: 0 2px 6px rgba(27, 42, 74, .25);
   transition: background .18s ease, transform .18s ease, box-shadow .18s ease, border-color .18s ease, color .18s ease;
 }
-.btn:hover, .mini-btn:hover { background: var(--navy-deep); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(11, 83, 148, .3); }
-.btn:active, .mini-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(11, 83, 148, .25); }
+.btn:hover, .mini-btn:hover { background: var(--navy-deep); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(27, 42, 74, .3); }
+.btn:active, .mini-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(27, 42, 74, .25); }
 .mini-btn { min-height: 36px; padding: 6px 10px; font-size: 0.9rem; }
 /* Profile menu buttons: full width so every button is the same size. */
 .menu-btn { width: 100%; }
@@ -182,9 +201,9 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .btn.gold:hover { filter: brightness(1.06); box-shadow: 0 6px 14px rgba(185, 138, 28, .4); }
 .btn.danger { background: #a83232; box-shadow: 0 2px 6px rgba(168, 50, 50, .25); }
 .btn.danger:hover { background: #8f2b2b; box-shadow: 0 6px 14px rgba(168, 50, 50, .3); }
-.btn.ghost { background: #fff; color: #24344a; border: 1px solid #d5dde6; box-shadow: var(--shadow-sm); }
-.btn.ghost:hover { background: #fff; color: var(--navy); border-color: var(--navy); box-shadow: var(--shadow-md); }
-.btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: 0 2px 6px rgba(11, 83, 148, .25); }
+.btn.ghost { background: rgba(255, 255, 255, .65); color: #24344a; border: 1px solid rgba(255, 255, 255, .7); box-shadow: var(--shadow-sm); }
+.btn.ghost:hover { background: rgba(255, 255, 255, .85); color: var(--navy); border-color: var(--navy); box-shadow: var(--shadow-md); }
+.btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: 0 2px 6px rgba(27, 42, 74, .25); }
 .inline-form { display: inline; margin: 0; }
 .field-error { color: #a83232; font-size: 0.85rem; margin: 2px 0 10px; }
 .flash {
@@ -234,7 +253,8 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .user-chip {
   display: inline-flex; align-items: center; gap: 8px;
   min-height: 44px; padding: 6px 12px 6px 6px; margin: 0 6px 6px 0;
-  border: 1px solid var(--line); border-radius: 999px; background: #fff;
+  border: 1px solid rgba(255, 255, 255, .65); border-radius: 999px; background: rgba(255, 255, 255, .6);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   color: var(--ink); text-decoration: none; font-weight: 700;
   box-shadow: var(--shadow-sm);
   transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
@@ -243,7 +263,7 @@ form.fill { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0
 .user-chip:hover .avatar { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); }
 .avatar {
   width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(180deg, #0d5da6, var(--navy-deep)); color: #fff;
+  background: linear-gradient(180deg, #22345c, var(--navy-deep)); color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background .18s ease;
 }
@@ -259,7 +279,7 @@ table.items input {
   border: 1px solid #c3cedb; border-radius: 10px;
   transition: border-color .15s ease, box-shadow .15s ease;
 }
-table.items input:focus { border-color: var(--navy); outline: none; box-shadow: 0 0 0 3px rgba(11, 83, 148, .15); }
+table.items input:focus { border-color: var(--navy); outline: none; box-shadow: 0 0 0 3px rgba(27, 42, 74, .15); }
 
 /* --- print: the paper page prints cleanly via the frozen print CSS --- */
 @media print {
@@ -269,5 +289,5 @@ table.items input:focus { border-color: var(--navy); outline: none; box-shadow: 
   .scroll { overflow: visible; }
   .panel-fill { display: block; overflow: visible; }
   form.fill { display: block; }
-  .panel { box-shadow: none; }
+  .panel { box-shadow: none; background: #fff; border-color: var(--line); }
 }
