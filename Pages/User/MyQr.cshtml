@@ -3,17 +3,38 @@
 @{
     ViewData["Title"] = "My QR";
 }
+@section Styles {
+  <link rel="stylesheet" href="/css/cropper.css" />
+}
+@section Scripts {
+  <script src="/js/cropper.js"></script>
+}
 <div class="panel panel-fill">
   <h2>My QR</h2>
-  <p class="hint">Your name, number and QR shown on the invoices you issue. Leave the QR empty to keep the current one.</p>
+  <p class="hint">Your name, number and QR shown on the invoices you issue. Pick a photo of your QR, crop the square, then save. Leave the photo empty to keep the current QR.</p>
   <div class="scroll">
   <form method="post" enctype="multipart/form-data">
     <label class="fld"><span>KBZ Pay name</span><input name="KbzName" value="@Model.KbzName" maxlength="128" /></label>
     <label class="fld"><span>KBZ Pay number</span><input name="KbzNumber" value="@Model.KbzNumber" maxlength="20" inputmode="tel" /></label>
-    <label class="fld"><span>QR image (JPG/PNG, max 2 MB)</span><input name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+    <label class="fld"><span>QR photo (JPG/PNG, max 2 MB)</span><input id="qr-file" name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+    <div class="cropper" id="qr-cropper" data-input="qr-file" data-thumb="qr-thumb" hidden>
+      <div class="crop-stage">
+        <img class="crop-img" alt="" />
+        <div class="crop-sel"><div class="crop-handle"></div></div>
+      </div>
+      <p class="hint">Drag the square to move it, drag the gold corner to resize it.</p>
+      <div class="row">
+        <button type="button" class="btn" data-crop-use>Use this crop</button>
+        <button type="button" class="btn ghost" data-crop-cancel>Cancel</button>
+      </div>
+    </div>
     @if (Model.HasQr)
     {
-      <p><img src="/qr/user/@Model.UserId" alt="Current QR" style="width:118px;height:118px" /></p>
+      <p><span class="hint">Current QR</span><br /><img id="qr-thumb" class="qr-thumb" src="/qr/user/@Model.UserId" alt="Current QR" /></p>
+    }
+    else
+    {
+      <p><img id="qr-thumb" class="qr-thumb" src="" alt="" hidden /></p>
     }
     <button class="btn" type="submit">Save template</button>
   </form>

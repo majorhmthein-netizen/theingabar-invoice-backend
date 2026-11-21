@@ -43,6 +43,6 @@ public class UserMyQrModel : AppPageModel
         }
         await AppDb.UpdateUserTemplateAsync(user.Id, KbzName?.Trim(), KbzNumber?.Trim(), qr, qrType);
         Flash("KBZ Pay template saved.");
-        return RedirectToPage("/User");
+        return RedirectToPage("/User/MyQr");
     }
 }
