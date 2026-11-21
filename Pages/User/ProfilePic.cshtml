@@ -3,31 +3,15 @@
 @{
     ViewData["Title"] = "Profile picture";
 }
-@section Styles {
-  <link rel="stylesheet" href="/css/cropper.css" />
-}
 @section Scripts {
   <script src="/js/cropper.js"></script>
 }
 <div class="panel panel-fill">
   <h2>Profile picture</h2>
-  <p class="hint">Your photo, shown next to your name. Pick a photo, crop the square, then save. You can change it any time.</p>
+  <p class="hint">Your photo, shown next to your name. Pick a photo, then save. You can change it any time.</p>
   <div class="scroll">
   <form method="post" enctype="multipart/form-data">
-    <label class="fld"><span>Photo (JPG/PNG, max 2 MB)</span><input id="avatar-file" name="AvatarFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-    <div class="cropper" id="avatar-cropper" data-input="avatar-file" data-thumb="avatar-thumb" hidden>
-      <div class="crop-stage">
-        <img class="crop-img" alt="" />
-        <div class="crop-sel"><div class="crop-handle"></div></div>
-      </div>
-      <p class="hint crop-loading" hidden>Loading photo…</p>
-      <p class="field-error crop-error" hidden>Couldn't read that photo — try another one.</p>
-      <p class="hint">Drag the square to move it, drag the gold corner to resize it.</p>
-      <div class="row">
-        <button type="button" class="btn" data-crop-use>Use this crop</button>
-        <button type="button" class="btn ghost" data-crop-cancel>Cancel</button>
-      </div>
-    </div>
+    <label class="fld"><span>Photo (JPG/PNG, max 2 MB)</span><input id="avatar-file" name="AvatarFile" type="file" accept="image/jpeg,image/png,image/webp" data-out="128" data-thumb="avatar-thumb" /></label>
     @if (Model.HasAvatar)
     {
       <p><span class="hint">Current picture</span><br /><img id="avatar-thumb" class="profile-avatar" src="/avatar/user/@Model.UserId" alt="Current profile picture" /></p>

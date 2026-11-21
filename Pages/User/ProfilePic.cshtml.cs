@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>The user's own profile picture: shown next to their name in
-/// the toolbar and on the profile page. Square-cropped on the phone
-/// (cropper.js) before upload; stored as bytes on the users row.</summary>
+/// the toolbar and on the profile page. Auto-cropped 1:1 to 128px on
+/// the phone (cropper.js) before upload; stored as bytes on the users row.</summary>
 public class UserProfilePicModel : AppPageModel
 {
     public int UserId { get; private set; }
