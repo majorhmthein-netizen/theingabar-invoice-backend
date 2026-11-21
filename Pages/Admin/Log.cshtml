@@ -30,7 +30,7 @@
     }
     @foreach (var inv in sec.Rows)
     {
-      <div class="log-row">
+      <div class="log-row" data-href="/invoice/@inv.Id">
         <span class="log-no">@inv.No</span>
         <span>@Paper.FmtDate(inv.Date)</span>
         <span>@inv.Customer</span>
@@ -39,6 +39,9 @@
         @if (Model.CanEdit(inv))
         {
           <a href="/form?id=@inv.Id">Edit</a>
+          <form method="post" asp-page-handler="Delete" asp-route-id="@inv.Id" class="inline-form">
+            <button class="mini-btn" type="submit">Delete</button>
+          </form>
         }
       </div>
     }
