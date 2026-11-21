@@ -11,10 +11,10 @@
   <p class="hint">Your photo, shown next to your name. Pick a photo, then save. You can change it any time.</p>
   <div class="scroll">
   <form method="post" enctype="multipart/form-data">
-    <label class="fld"><span>Photo (JPG/PNG, max 2 MB)</span><input id="avatar-file" name="AvatarFile" type="file" accept="image/jpeg,image/png,image/webp" data-out="128" data-thumb="avatar-thumb" /></label>
+    <label class="fld"><span>Photo (JPG/PNG, max 2 MB)</span><input id="avatar-file" name="AvatarFile" type="file" accept="image/jpeg,image/png,image/webp" data-out="128" data-thumb="avatar-thumb" data-cache="tgb-avatar-@Model.UserId" /></label>
     @if (Model.HasAvatar)
     {
-      <p><span class="hint">Current picture</span><br /><img id="avatar-thumb" class="profile-avatar" src="/avatar/user/@Model.UserId" alt="Current profile picture" /></p>
+      <p><span class="hint">Current picture</span><br /><img id="avatar-thumb" class="profile-avatar" data-cache="tgb-avatar-@Model.UserId" src="/avatar/user/@Model.UserId" alt="Current profile picture" /></p>
     }
     else
     {

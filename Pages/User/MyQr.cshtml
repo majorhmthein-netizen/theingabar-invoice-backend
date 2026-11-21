@@ -13,10 +13,10 @@
   <form method="post" enctype="multipart/form-data">
     <label class="fld"><span>KBZ Pay name</span><input name="KbzName" value="@Model.KbzName" maxlength="128" /></label>
     <label class="fld"><span>KBZ Pay number</span><input name="KbzNumber" value="@Model.KbzNumber" maxlength="20" inputmode="tel" /></label>
-    <label class="fld"><span>QR photo (JPG/PNG, max 2 MB)</span><input id="qr-file" name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" data-out="512" data-thumb="qr-thumb" /></label>
+    <label class="fld"><span>QR photo (JPG/PNG, max 2 MB)</span><input id="qr-file" name="QrFile" type="file" accept="image/jpeg,image/png,image/webp" data-out="512" data-thumb="qr-thumb" data-cache="tgb-qr-@Model.UserId" /></label>
     @if (Model.HasQr)
     {
-      <p><span class="hint">Current QR</span><br /><img id="qr-thumb" class="qr-thumb" src="/qr/user/@Model.UserId" alt="Current QR" /></p>
+      <p><span class="hint">Current QR</span><br /><img id="qr-thumb" class="qr-thumb" data-cache="tgb-qr-@Model.UserId" src="/qr/user/@Model.UserId" alt="Current QR" /></p>
     }
     else
     {
