@@ -168,9 +168,7 @@ public static class PdfService
             var cTablePadT = new[] { 14f, 10f, 8f, 6f, 3f }[ct];
             var cHeadPadV = new[] { 7f, 6f, 5f, 5f, 3f }[ct];
             var cTotalPadT = new[] { 8f, 6f, 6f, 4f, 3f }[ct];
-            var cPayPadT = new[] { 14f, 10f, 8f, 6f, 3f }[ct];
-            var cPayPad = new[] { 14f, 11f, 8f, 6f, 5f }[ct];
-            var cPayLinePadT = new[] { 5f, 5f, 4f, 3f, 2f }[ct];
+            var cQrPadT = new[] { 14f, 10f, 8f, 6f, 3f }[ct];
             var cQr = new[] { 96f, 76f, 64f, 64f, 64f }[ct];
             var cThanksPadT = new[] { 22f, 14f, 8f, 5f, 3f }[ct];
             var cThanksPadT2 = new[] { 12f, 8f, 6f, 4f, 3f }[ct];
@@ -238,7 +236,6 @@ public static class PdfService
                         {
                             c.Item().Text("DATE").Style(Latin(9, 700, "#5b6a7a").LetterSpacing(0.14f));
                             c.Item().PaddingTop(3).Text(Paper.FmtDate(row.Date)).Style(Myanmar(14.25f, 700, "#14202e"));
-                            c.Item().PaddingTop(3).Text("Currency: MMK").Style(Myanmar(10.5f, 400, "#5b6a7a"));
                         });
                     });
 
@@ -267,8 +264,11 @@ public static class PdfService
                         });
                         t.Header(h =>
                         {
+                            // "No." header left blank (Han 2026-11-21): "No."
+                            // beside DESCRIPTION reads as "no description" at
+                            // a glance. Row numbers 1,2,3… stay in the body.
                             h.Cell().Background("#14202e").PaddingVertical(cHeadPadV).PaddingHorizontal(8)
-                                .Text("No.").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
+                                .Text("").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
                             h.Cell().Background("#14202e").PaddingVertical(cHeadPadV).PaddingHorizontal(8)
                                 .Text("DESCRIPTION").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
                             h.Cell().Background("#14202e").PaddingVertical(cHeadPadV).PaddingHorizontal(8)
@@ -291,30 +291,31 @@ public static class PdfService
                             .Text("Total (MMK)").Style(Myanmar(12.4f, 800, "#14202e"));
                         t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
                             .AlignRight().Text(Paper.Fmt(row.Total)).Style(Myanmar(12.4f, 800, "#0b5394"));
+                        // Deposit (စရံငွေ, Han 2026-11-21): shown only when
+                        // > 0; the final total is Total - Deposit. A zero
+                        // deposit is not printed (Total alone stands).
+                        if (row.Deposit > 0)
+                        {
+                            t.Cell().PaddingVertical(cellPadV).PaddingHorizontal(8).Text("");
+                            t.Cell().PaddingVertical(cellPadV).PaddingHorizontal(8)
+                                .Text("Deposit (စရံငွေ)").Style(Myanmar(itemSize, 400, "#14202e"));
+                            t.Cell().PaddingVertical(cellPadV).PaddingHorizontal(8)
+                                .AlignRight().Text(Paper.Fmt(row.Deposit)).Style(Myanmar(itemSize, 700, "#000000"));
+                            t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
+                                .Text("");
+                            t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
+                                .Text("Final Total (MMK)").Style(Myanmar(12.4f, 800, "#14202e"));
+                            t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
+                                .AlignRight().Text(Paper.Fmt(row.Total - row.Deposit)).Style(Myanmar(12.4f, 800, "#0b5394"));
+                        }
                         });
                     });
 
-                    // --- payment box + QR ---
-                    col.Item().PaddingTop(cPayPadT).Border(1).BorderColor("#dfe5ec").Padding(cPayPad).Row(r =>
-                    {
-                        r.RelativeItem().Column(c =>
-                        {
-                            c.Item().Text("PAYMENT").Style(Latin(8.6f, 700, "#5b6a7a").LetterSpacing(0.1f));
-                            c.Item().PaddingTop(cPayLinePadT).Text(t =>
-                            {
-                                t.Span("KBZ Pay").Style(Myanmar(11.25f, 800, "#0b5394"));
-                                t.Span(" — No. ").Style(Myanmar(11.25f, 400, "#14202e"));
-                                t.Span(payNum).Style(Myanmar(11.25f, 700, "#0b5394"));
-                                t.Span(" — Name: ").Style(Myanmar(11.25f, 400, "#14202e"));
-                                t.Span(payName).Style(Myanmar(11.25f, 700, "#0b5394"));
-                            });
-                            c.Item().PaddingTop(3).Text("Scan the QR code with KBZPay to pay.")
-                                .Style(Myanmar(10.5f, 400, "#5b6a7a"));
-                        });
-                        if (qr is not null)
-                            r.ConstantItem(cQr).Border(1).BorderColor("#dfe5ec").Padding(4)
-                                .Image(qr).FitArea();
-                    });
+                    // --- QR alone (Han 2026-11-21): the payment box is
+                    // gone; only the QR stays, centred under the table.
+                    if (qr is not null)
+                        col.Item().PaddingTop(cQrPadT).AlignCenter().Width(cQr).Border(1).BorderColor("#dfe5ec").Padding(4)
+                            .Image(qr).FitArea();
 
                     // --- thanks (each line centred: AlignCenter belongs on the
                     // text item itself — on the full-width column it does nothing) ---
