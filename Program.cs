@@ -215,7 +215,7 @@ app.MapGet("/api/cache-list", async (HttpContext ctx) =>
     var adminIds = (await AppDb.ListUsersAsync())
         .Where(u => u.IsAdmin).Select(u => u.LocalId).ToHashSet();
     var all = await store.ListAsync();
-    var urls = new List<string> { "/", "/user", "/form" };
+    var urls = new List<string> { "/", "/user", "/form", "/notifications" };
     var months = new HashSet<string>();
     foreach (var r in all)
     {
@@ -707,7 +707,7 @@ public sealed record InvoiceItem(
 public sealed record InvoiceInput(
     string Uid, string? No, string? UserId, long? CreatedAt,
     string Date, string Customer, List<InvoiceItem> Items, long Total,
-    long Deposit = 0, string PaperSize = "A4");
+    long Deposit = 0, string PaperSize = "A4", string PaymentStatus = "paid");
 
 /// <summary>One invoice row, serialised in the Node server's exact field
 /// order: id, uid, no, userId, createdAt, date, customer, items, total,
@@ -715,7 +715,12 @@ public sealed record InvoiceInput(
 /// 2026-11-21) is the advance paid; the paper shows Total - Deposit as
 /// the final total only when Deposit > 0, and only Total when it is 0.
 /// PaperSize (Han 2026-11-21) is the paper the invoice prints on:
-/// "A4" (full page, the default) or "Half" (half-A4, A4 တ၀က်စာ).</summary>
+/// "A4" (full page, the default) or "Half" (half-A4, A4 တ၀က်စာ).
+/// PaymentStatus (Han 2026-11-21, v34): "paid" (money received — counts
+/// into the month total, no reminder) or "not_yet" (balance still owed —
+/// a notification "Customer ထံမှ xxxks ရန်ကျန်ရှိနေပါသည်။" + a 3-day
+/// reminder, until marked paid). Default "paid" so old invoices keep
+/// counting into month totals and raise no reminders.</summary>
 public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("id")] long Id,
     [property: System.Text.Json.Serialization.JsonPropertyName("uid")] string Uid,
@@ -729,7 +734,8 @@ public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("deposit")] long Deposit = 0,
     [property: System.Text.Json.Serialization.JsonPropertyName("paperSize")] string PaperSize = "A4",
     [property: System.Text.Json.Serialization.JsonPropertyName("created_at")] string CreatedAtStr = "",
-    [property: System.Text.Json.Serialization.JsonPropertyName("updated_at")] string UpdatedAtStr = "");
+    [property: System.Text.Json.Serialization.JsonPropertyName("updated_at")] string UpdatedAtStr = "",
+    [property: System.Text.Json.Serialization.JsonPropertyName("paymentStatus")] string PaymentStatus = "paid");
 
 public sealed class DuplicateNoException : Exception;
 
@@ -754,7 +760,7 @@ public sealed class PostgresStore : IInvoiceStore
     public NpgsqlDataSource DataSource => _ds;
 
     private const string SelectCols =
-        "id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, created_at, updated_at";
+        "id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, created_at, updated_at, payment_status";
 
     private const string CreateTableSql =
         "CREATE TABLE IF NOT EXISTS invoices (" +
@@ -769,6 +775,7 @@ public sealed class PostgresStore : IInvoiceStore
         "total INTEGER NOT NULL, " +
         "deposit INTEGER NOT NULL DEFAULT 0, " +
         "paper_size TEXT NOT NULL DEFAULT 'A4', " +
+        "payment_status TEXT NOT NULL DEFAULT 'paid', " +
         "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), " +
         "updated_at TIMESTAMPTZ NOT NULL DEFAULT now())";
 
@@ -923,7 +930,8 @@ public sealed class PostgresStore : IInvoiceStore
             r.IsDBNull(9) ? 0 : r.GetInt32(9),
             r.IsDBNull(10) ? "A4" : r.GetString(10),
             Shared.FormatTs(r.GetDateTime(11)),
-            Shared.FormatTs(r.GetDateTime(12)));
+            Shared.FormatTs(r.GetDateTime(12)),
+            r.IsDBNull(13) ? "paid" : r.GetString(13));
     }
 
     static string ItemsJson(List<InvoiceItem> items) =>
@@ -942,6 +950,7 @@ public sealed class PostgresStore : IInvoiceStore
         cmd.Parameters.AddWithValue("@total", checked((int)inv.Total));
         cmd.Parameters.AddWithValue("@deposit", checked((int)inv.Deposit));
         cmd.Parameters.AddWithValue("@paperSize", inv.PaperSize == "Half" ? "Half" : "A4");
+        cmd.Parameters.AddWithValue("@payStatus", inv.PaymentStatus == "not_yet" ? "not_yet" : "paid");
     }
 
     public async Task<List<InvoiceRow>> ListAsync()
@@ -961,8 +970,8 @@ public sealed class PostgresStore : IInvoiceStore
         {
             await using var conn = await _ds.OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand(
-                "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size) " +
-                "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items,@total,@deposit,@paperSize) " +
+                "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit, paper_size, payment_status) " +
+                "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items,@total,@deposit,@paperSize,@payStatus) " +
                 $"RETURNING {SelectCols}", conn);
             AddInvoiceParams(cmd, inv);
             await using var r = await cmd.ExecuteReaderAsync();
@@ -991,7 +1000,7 @@ public sealed class PostgresStore : IInvoiceStore
             await using var cmd = new NpgsqlCommand(
                 "UPDATE invoices SET no=COALESCE(@no, no), user_id=COALESCE(@userId, user_id), " +
                 "client_created_at=COALESCE(@createdAt, client_created_at), date=@date, customer=@customer, " +
-                "items=@items, total=@total, deposit=@deposit, paper_size=@paperSize, updated_at=now() WHERE id=@id " +
+                "items=@items, total=@total, deposit=@deposit, paper_size=@paperSize, payment_status=@payStatus, updated_at=now() WHERE id=@id " +
                 $"RETURNING {SelectCols}", conn);
             AddInvoiceParams(cmd, inv);
             cmd.Parameters.AddWithValue("@id", id);
