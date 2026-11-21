@@ -56,11 +56,8 @@
   <div class="inv-table-wrap">
   <div class="inv-watermark" aria-hidden="true">
     <img src="/img/theingabar-logo-watermark.jpg" alt="" />
-    @* The logo already carries the gold သိန်းကမ္ဘာ wordmark, so no
-       separate shop-name text line (it duplicated it — Han 2026-11-21).
-       Group + id sit right under the gold logo, in the shop gold. *@
-    <span class="wm-group">@Model.Meta.Group</span>
-    <span class="wm-id">id: @Model.No</span>
+    @* Logo only (Han 2026-11-21): the group name and the id lines were
+       removed from the watermark — the faded logo alone is the mark. *@
   </div>
   <table class="inv-table">
     <thead>
@@ -86,7 +83,7 @@
   @* Payment box removed (Han 2026-11-21) — only the QR stays, centred
      under the table, so the space is cleaner. *@
   <div class="inv-qr">
-    <img id="pQr" class="p-qr" data-cache="@Model.QrCacheKey" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" crossorigin="anonymous" />
+    <img id="pQr" class="p-qr" data-cache="@Model.QrCacheKey" src="@Model.QrSrc" alt="KBZ Pay QR code for @Model.PayName, @Model.PayNum" />
   </div>
   <div class="inv-thanks">
     <span class="en" id="pThanks">@Model.Meta.Thanks</span>
