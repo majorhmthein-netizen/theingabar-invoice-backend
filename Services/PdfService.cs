@@ -157,7 +157,7 @@ public static class PdfService
             // a little at the two highest tiers for extra room.
             var cMarginTop = new[] { 30f, 30f, 30f, 26f, 24f }[ct];
             var cMarginBottom = new[] { 28f, 28f, 28f, 24f, 22f }[ct];
-            var cLogoH = new[] { 54f, 44f, 36f, 32f, 28f }[ct];
+            var cLogoH = new[] { 68f, 55f, 45f, 40f, 35f }[ct];
             var cHeadPadT = new[] { 12f, 8f, 6f, 4f, 4f }[ct];
             var cGroupPadT = new[] { 4f, 3f, 3f, 2f, 2f }[ct];
             var cServPadT = new[] { 10f, 6f, 4f, 4f, 2f }[ct];
@@ -248,19 +248,14 @@ public static class PdfService
                     // --- items table (navy header) + faint logo watermark behind it ---
                     col.Item().PaddingTop(cTablePadT).Layers(layers =>
                     {
-                        // Watermark (Han 2026-11-21): the faded logo plus the
-                        // shop name + id in small faint text, so the watermark
-                        // itself identifies the shop and the invoice.
+                        // Watermark (Han 2026-11-21): the faded logo
+                        // alone — the group name and id text lines were
+                        // removed, so the watermark is just the mark.
                         layers.Layer().AlignCenter().AlignMiddle().Column(c =>
                         {
                             var wm = WatermarkBytes();
                             if (wm is not null)
                                 c.Item().AlignCenter().Width(220).Image(wm).FitArea();
-                            // No shop-name text line: the logo already carries
-                            // the gold သိန်းကမ္ဘာ wordmark (Han 2026-11-21).
-                            // Group + id sit right under it, in the shop gold.
-                            c.Item().PaddingTop(2).AlignCenter().Text(meta.Group).Style(Latin(8, 700, "#D4AF37").LetterSpacing(0.18f));
-                            c.Item().PaddingTop(4).AlignCenter().Text("id: " + (row.No ?? "")).Style(Latin(10, 700, "#D4AF37"));
                         });
                         layers.PrimaryLayer().Table(t =>
                     {
