@@ -117,4 +117,22 @@ public class AdminUsersModel : AppPageModel
         await AppDb.ResetRateLimitsByPrefixAsync("pin-attempt:" + user.Phone);
         await AppDb.RevokeUserSessionsAsync(user.Id);
     }
+
+    /// <summary>Delete a user (Han 2026-11-21: "Test ကိုဖျက်ပစ်" + "ဖျက်လို့ရတဲ့
+    /// button လည်းထည့်"). Guards: never an admin account, never your own
+    /// account, and never a user who has invoices (their invoices would be
+    /// orphaned — invoices reference the user's LocalId with no FK).</summary>
+    public async Task<IActionResult> OnPostDeleteAsync()
+    {
+        var g = await GateAsync(); if (g is not null) return g;
+        var user = await AppDb.FindUserByIdAsync(UserId);
+        if (user is null) { Flash("That user no longer exists."); return RedirectToPage("/Admin/Users"); }
+        if (user.IsAdmin) { Flash("Admin accounts cannot be deleted."); return RedirectToPage("/Admin/Users"); }
+        if (user.Id == Me!.User.Id) { Flash("You cannot delete your own account."); return RedirectToPage("/Admin/Users"); }
+        if (await AppDb.HasInvoicesAsync(user.LocalId))
+        { Flash("Cannot delete " + user.Username + " — they have invoices."); return RedirectToPage("/Admin/Users"); }
+        await AppDb.DeleteUserAsync(user.Id);
+        Flash("Deleted " + user.Username + ".");
+        return RedirectToPage("/Admin/Users");
+    }
 }
