@@ -473,6 +473,29 @@ public static class AppDb
         await cmd.ExecuteNonQueryAsync();
     }
 
+    /// <summary>Deletes a user row. Their sessions and PIN-reset requests
+    /// go with it (FK ON DELETE CASCADE on sessions + pin_reset_requests).
+    /// Invoices do NOT cascade (invoices.user_id is a LocalId string with
+    /// no FK) — the caller must check HasInvoicesAsync first, so a user
+    /// with invoices can never be deleted and their invoices orphaned.</summary>
+    public static async Task DeleteUserAsync(int id)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("DELETE FROM users WHERE id = @id", conn);
+        cmd.Parameters.AddWithValue("@id", id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>True when any invoice is owned by this user's LocalId.</summary>
+    public static async Task<bool> HasInvoicesAsync(string localId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT COUNT(*) FROM invoices WHERE user_id = @u", conn);
+        cmd.Parameters.AddWithValue("@u", localId);
+        return Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
+    }
+
     public static async Task UpdateUserTemplateAsync(int id, string? kbzName, string? kbzNumber,
         byte[]? qr, string? qrType)
     {
