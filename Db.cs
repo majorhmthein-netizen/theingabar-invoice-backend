@@ -162,8 +162,23 @@ public static class AppDb
                 locked_until TIMESTAMPTZ
             )
             """);
+        // PIN reset requests (Han 2026-11-21, "Forgot PIN"): a mechanic who
+        // forgot their PIN taps Forgot PIN on the login page; the request
+        // reaches the admin, who taps Reset and the PIN becomes 1111 again.
+        // One pending request per user — a repeat tap while one is pending
+        // does not create a duplicate.
+        await ExecAsync(conn, """
+            CREATE TABLE IF NOT EXISTS pin_reset_requests (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                resolved_at TIMESTAMPTZ,
+                resolved_by TEXT
+            )
+            """);
         await SeedAsync(conn);
-        Console.WriteLine("[backend] html-only tables ready (users, meta, sessions, invoice_no_seq, rate_limits)");
+        Console.WriteLine("[backend] html-only tables ready (users, meta, sessions, invoice_no_seq, rate_limits, pin_reset_requests)");
     }
 
     static async Task<int> ExecAsync(NpgsqlConnection conn, string sql)
@@ -386,6 +401,55 @@ public static class AppDb
         cmd.Parameters.AddWithValue("@h", hash);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    /* ---------------- PIN reset requests (Forgot PIN, Han 2026-11-21) ---------------- */
+
+    /// <summary>Creates a pending PIN-reset request for a user — unless one
+    /// is already pending, in which case nothing is created (a repeat tap
+    /// does not spam the admin). Returns true when a new request was made.</summary>
+    public static async Task<bool> CreatePinResetRequestAsync(int userId)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "INSERT INTO pin_reset_requests (user_id) " +
+            "SELECT @u WHERE NOT EXISTS (SELECT 1 FROM pin_reset_requests " +
+            "WHERE user_id = @u AND status = 'pending')", conn);
+        cmd.Parameters.AddWithValue("@u", userId);
+        return await cmd.ExecuteNonQueryAsync() == 1;
+    }
+
+    /// <summary>Pending PIN-reset requests, oldest first, with the
+    /// requester's username + phone.</summary>
+    public static async Task<List<PinResetRequestRow>> ListPendingPinResetRequestsAsync()
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT r.id, r.user_id, u.username, u.phone, r.created_at " +
+            "FROM pin_reset_requests r JOIN users u ON u.id = r.user_id " +
+            "WHERE r.status = 'pending' ORDER BY r.created_at", conn);
+        await using var r = await cmd.ExecuteReaderAsync();
+        var list = new List<PinResetRequestRow>();
+        while (await r.ReadAsync())
+            list.Add(new PinResetRequestRow(
+                r.GetInt32(0), r.GetInt32(1), r.GetString(2), r.GetString(3),
+                r.GetDateTime(4)));
+        return list;
+    }
+
+    /// <summary>Marks a PIN-reset request done (the admin tapped Reset).
+    /// Returns the user id, or null when the request is not pending.</summary>
+    public static async Task<int?> ResolvePinResetRequestAsync(int requestId, string resolvedBy)
+    {
+        await using var conn = await DataSource!.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "UPDATE pin_reset_requests SET status = 'done', resolved_at = now(), " +
+            "resolved_by = @b WHERE id = @id AND status = 'pending' " +
+            "RETURNING user_id", conn);
+        cmd.Parameters.AddWithValue("@b", resolvedBy);
+        cmd.Parameters.AddWithValue("@id", requestId);
+        var v = await cmd.ExecuteScalarAsync();
+        return v is null ? null : (int)v;
     }
 
     public static async Task SetUserStatusAsync(int id, string status, string? approvedBy)
@@ -866,3 +930,9 @@ public sealed record MetaRow(
 public sealed record SessionRow(
     string Id, int UserId, bool IsAdmin, DateTime CreatedAt, DateTime ExpiresAt,
     bool Revoked, string Username, string Status);
+
+/// <summary>A mechanic's PIN-reset request (Forgot PIN, Han 2026-11-21):
+/// the requester (username + phone) and when it was made. Only pending
+/// requests are listed for the admin.</summary>
+public sealed record PinResetRequestRow(
+    int Id, int UserId, string Username, string Phone, DateTime CreatedAt);
