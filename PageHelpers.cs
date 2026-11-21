@@ -110,7 +110,7 @@ public static class Paper
     {
         var (payName, payNum, qrSrc) = PaymentFor(owner, meta);
         return new InvoicePaperModel(meta, payName, payNum, qrSrc,
-            row.Customer, row.Date, row.No ?? "", row.Items, row.Total);
+            row.Customer, row.Date, row.No ?? "", row.Items, row.Total, row.Deposit);
     }
 
     /// <summary>Parses a posted item list (desc0/amount0 … desc19/amount19).
@@ -151,8 +151,10 @@ public static class Paper
         CompactTier(count) switch { 1 => " inv-c1", 2 => " inv-c2", 3 => " inv-c3", 4 => " inv-c4", _ => "" };
 
     /// <summary>Validates a parsed invoice (same rules as the /api server
-    /// validation). Returns an error string or null.</summary>
-    public static string? ValidateDraft(string? date, string? customer, List<InvoiceItem> items)
+    /// validation). Returns an error string or null. Deposit (စရံငွေ, Han
+    /// 2026-11-21) must be >= 0 and no more than the items total; the paper
+    /// shows Total - Deposit as the final total only when Deposit > 0.</summary>
+    public static string? ValidateDraft(string? date, string? customer, List<InvoiceItem> items, long deposit = 0)
     {
         if (string.IsNullOrWhiteSpace(date)) return "date is required";
         if (!DateOnly.TryParseExact(date.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture,
@@ -165,6 +167,8 @@ public static class Paper
         {
             if (it.Amount < 0) return "each item amount must be an integer >= 0";
         }
+        if (deposit < 0) return "deposit must be an integer >= 0";
+        if (deposit > items.Sum(i => i.Amount)) return "deposit cannot be more than the total";
         return null;
     }
 }
@@ -172,4 +176,10 @@ public static class Paper
 /// <summary>Model for the frozen invoice-paper partial.</summary>
 public sealed record InvoicePaperModel(
     MetaRow Meta, string PayName, string PayNum, string QrSrc,
-    string Customer, string Date, string No, List<InvoiceItem> Items, long Total);
+    string Customer, string Date, string No, List<InvoiceItem> Items, long Total, long Deposit = 0)
+{
+    /// <summary>Amount still to pay: Total - Deposit. When Deposit is 0
+    /// this equals Total, and the paper shows only Total (Han 2026-11-21:
+    /// a zero deposit is not printed).</summary>
+    public long FinalTotal => Total - Deposit;
+}

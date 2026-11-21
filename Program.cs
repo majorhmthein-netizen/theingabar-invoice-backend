@@ -654,11 +654,14 @@ public sealed record InvoiceItem(
 
 public sealed record InvoiceInput(
     string Uid, string? No, string? UserId, long? CreatedAt,
-    string Date, string Customer, List<InvoiceItem> Items, long Total);
+    string Date, string Customer, List<InvoiceItem> Items, long Total,
+    long Deposit = 0);
 
 /// <summary>One invoice row, serialised in the Node server's exact field
 /// order: id, uid, no, userId, createdAt, date, customer, items, total,
-/// created_at, updated_at.</summary>
+/// deposit, created_at, updated_at. Deposit (စရံငွေ, Han 2026-11-21) is
+/// the advance paid; the paper shows Total - Deposit as the final total
+/// only when Deposit > 0, and only Total when it is 0.</summary>
 public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("id")] long Id,
     [property: System.Text.Json.Serialization.JsonPropertyName("uid")] string Uid,
@@ -669,8 +672,9 @@ public sealed record InvoiceRow(
     [property: System.Text.Json.Serialization.JsonPropertyName("customer")] string Customer,
     [property: System.Text.Json.Serialization.JsonPropertyName("items")] List<InvoiceItem> Items,
     [property: System.Text.Json.Serialization.JsonPropertyName("total")] long Total,
-    [property: System.Text.Json.Serialization.JsonPropertyName("created_at")] string CreatedAtStr,
-    [property: System.Text.Json.Serialization.JsonPropertyName("updated_at")] string UpdatedAtStr);
+    [property: System.Text.Json.Serialization.JsonPropertyName("deposit")] long Deposit = 0,
+    [property: System.Text.Json.Serialization.JsonPropertyName("created_at")] string CreatedAtStr = "",
+    [property: System.Text.Json.Serialization.JsonPropertyName("updated_at")] string UpdatedAtStr = "");
 
 public sealed class DuplicateNoException : Exception;
 
@@ -695,7 +699,7 @@ public sealed class PostgresStore : IInvoiceStore
     public NpgsqlDataSource DataSource => _ds;
 
     private const string SelectCols =
-        "id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at";
+        "id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, created_at, updated_at";
 
     private const string CreateTableSql =
         "CREATE TABLE IF NOT EXISTS invoices (" +
@@ -708,6 +712,7 @@ public sealed class PostgresStore : IInvoiceStore
         "customer TEXT NOT NULL, " +
         "items JSONB NOT NULL, " +
         "total INTEGER NOT NULL, " +
+        "deposit INTEGER NOT NULL DEFAULT 0, " +
         "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), " +
         "updated_at TIMESTAMPTZ NOT NULL DEFAULT now())";
 
@@ -792,6 +797,7 @@ public sealed class PostgresStore : IInvoiceStore
             await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS no TEXT");
             await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS user_id TEXT");
             await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS client_created_at BIGINT");
+            await ExecAsync(conn, "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit INTEGER NOT NULL DEFAULT 0");
             await ExecAsync(conn,
                 "CREATE UNIQUE INDEX IF NOT EXISTS invoices_no_unique ON invoices(no) WHERE no IS NOT NULL");
             // One-time data fix (v2, 2026-11-20): the Nissan Safari seed invoice
@@ -857,8 +863,9 @@ public sealed class PostgresStore : IInvoiceStore
             r.GetString(6),
             ParseItems(r.GetString(7)),
             r.GetInt32(8),
-            Shared.FormatTs(r.GetDateTime(9)),
-            Shared.FormatTs(r.GetDateTime(10)));
+            r.IsDBNull(9) ? 0 : r.GetInt32(9),
+            Shared.FormatTs(r.GetDateTime(10)),
+            Shared.FormatTs(r.GetDateTime(11)));
     }
 
     static string ItemsJson(List<InvoiceItem> items) =>
@@ -875,6 +882,7 @@ public sealed class PostgresStore : IInvoiceStore
         cmd.Parameters.Add(new NpgsqlParameter("@items", NpgsqlDbType.Jsonb) { Value = ItemsJson(inv.Items) });
         // PG total is INTEGER; an out-of-range total fails here (500), same as Node.
         cmd.Parameters.AddWithValue("@total", checked((int)inv.Total));
+        cmd.Parameters.AddWithValue("@deposit", checked((int)inv.Deposit));
     }
 
     public async Task<List<InvoiceRow>> ListAsync()
@@ -894,8 +902,8 @@ public sealed class PostgresStore : IInvoiceStore
         {
             await using var conn = await _ds.OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand(
-                "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total) " +
-                "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items,@total) " +
+                "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit) " +
+                "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items,@total,@deposit) " +
                 $"RETURNING {SelectCols}", conn);
             AddInvoiceParams(cmd, inv);
             await using var r = await cmd.ExecuteReaderAsync();
@@ -924,7 +932,7 @@ public sealed class PostgresStore : IInvoiceStore
             await using var cmd = new NpgsqlCommand(
                 "UPDATE invoices SET no=COALESCE(@no, no), user_id=COALESCE(@userId, user_id), " +
                 "client_created_at=COALESCE(@createdAt, client_created_at), date=@date, customer=@customer, " +
-                "items=@items, total=@total, updated_at=now() WHERE id=@id " +
+                "items=@items, total=@total, deposit=@deposit, updated_at=now() WHERE id=@id " +
                 $"RETURNING {SelectCols}", conn);
             AddInvoiceParams(cmd, inv);
             cmd.Parameters.AddWithValue("@id", id);
@@ -1010,6 +1018,7 @@ public sealed class JsonStore : IInvoiceStore
             JStr(r, "customer") ?? "",
             items,
             JLong(r, "total") ?? 0,
+            JLong(r, "deposit") ?? 0,
             JStr(r, "created_at") ?? "",
             JStr(r, "updated_at") ?? "");
     }
@@ -1091,6 +1100,7 @@ public sealed class JsonStore : IInvoiceStore
                 ["customer"] = inv.Customer,
                 ["items"] = ItemsArray(inv.Items),
                 ["total"] = inv.Total,
+                ["deposit"] = inv.Deposit,
                 ["created_at"] = now,
                 ["updated_at"] = now,
             };
@@ -1120,6 +1130,7 @@ public sealed class JsonStore : IInvoiceStore
             row["customer"] = inv.Customer;
             row["items"] = ItemsArray(inv.Items);
             row["total"] = inv.Total;
+            row["deposit"] = inv.Deposit;
             row["updated_at"] = Shared.IsoNow();
             Write(doc);
             return Task.FromResult<InvoiceRow?>(RowFromJson(row));

@@ -732,9 +732,9 @@ public static class AppDb
                 // by using a raw insert here (same columns as PostgresStore).
                 var itemsJson = System.Text.Json.JsonSerializer.Serialize(withNo.Items, Shared.JsonOpts);
                 await using var ins = new NpgsqlCommand(
-                    "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total) " +
-                    "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items::jsonb,@total) " +
-                    "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, created_at, updated_at",
+                    "INSERT INTO invoices (uid, no, user_id, client_created_at, date, customer, items, total, deposit) " +
+                    "VALUES (@uid,@no,@userId,@createdAt,@date,@customer,@items::jsonb,@total,@deposit) " +
+                    "RETURNING id, uid, no, user_id, client_created_at, date, customer, items, total, deposit, created_at, updated_at",
                     conn, tx);
                 ins.Parameters.AddWithValue("@uid", withNo.Uid);
                 ins.Parameters.AddWithValue("@no", no);
@@ -744,6 +744,7 @@ public static class AppDb
                 ins.Parameters.AddWithValue("@customer", withNo.Customer);
                 ins.Parameters.AddWithValue("@items", itemsJson);
                 ins.Parameters.AddWithValue("@total", checked((int)withNo.Total));
+                ins.Parameters.AddWithValue("@deposit", checked((int)withNo.Deposit));
                 await using var r = await ins.ExecuteReaderAsync();
                 await r.ReadAsync();
                 var row = ReadInvoiceRow(r);
@@ -798,7 +799,8 @@ public static class AppDb
             r.IsDBNull(3) ? null : r.GetString(3),
             r.IsDBNull(4) ? null : r.GetInt64(4),
             r.GetString(5), r.GetString(6), items, r.GetInt32(8),
-            Shared.FormatTs(r.GetDateTime(9)), Shared.FormatTs(r.GetDateTime(10)));
+            r.IsDBNull(9) ? 0 : r.GetInt32(9),
+            Shared.FormatTs(r.GetDateTime(10)), Shared.FormatTs(r.GetDateTime(11)));
     }
 
     public static async Task<long> PeriodTotalAsync(DateOnly from, DateOnly to, string? userLocalId)
