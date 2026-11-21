@@ -146,29 +146,59 @@ public static class PdfService
             // default/max size; 11–15 shrink a step; 16–20 shrink most,
             // so a full 20-item invoice still fits on one A4 page.
             var tier = Paper.ItemTier(row.Items.Count);
-            var itemSize = tier == 2 ? 8.8f : tier == 1 ? 9.8f : 10.9f;
-            var cellPadV = tier == 2 ? 4 : tier == 1 ? 5 : 6;
+            var ct = Paper.CompactTier(row.Items.Count);
+            // One-page fit (Han 2026-11-21 "1 ရွက်ထဲ"): the description
+            // shrinks a touch more at the two highest compact tiers.
+            var itemSize = ct == 4 ? 8.2f : ct == 3 ? 9.2f : tier == 2 ? 8.8f : tier == 1 ? 9.8f : 10.9f;
+            var cellPadV = ct == 4 ? 3 : ct == 3 ? 4 : ct == 2 ? 4 : ct == 1 ? 5 : 6;
+            // Fixed-block sizes per compact tier (index = ct 0..4:
+            // ≤4, 5–7, 8–10, 11–15, 16–20 items). The QR never goes
+            // below 64pt — it must stay scannable. Page margins shrink
+            // a little at the two highest tiers for extra room.
+            var cMarginTop = new[] { 30f, 30f, 30f, 26f, 24f }[ct];
+            var cMarginBottom = new[] { 28f, 28f, 28f, 24f, 22f }[ct];
+            var cLogoH = new[] { 54f, 44f, 36f, 32f, 28f }[ct];
+            var cHeadPadT = new[] { 12f, 8f, 6f, 4f, 4f }[ct];
+            var cGroupPadT = new[] { 4f, 3f, 3f, 2f, 2f }[ct];
+            var cServPadT = new[] { 10f, 6f, 4f, 4f, 2f }[ct];
+            var cServLH = new[] { 1.9f, 1.9f, 1.7f, 1.6f, 1.5f }[ct];
+            var cAddrPadT = new[] { 8f, 6f, 4f, 4f, 2f }[ct];
+            var cCustPadT = new[] { 14f, 10f, 8f, 6f, 3f }[ct];
+            var cCustPad = new[] { 14f, 11f, 8f, 6f, 4f }[ct];
+            var cTablePadT = new[] { 14f, 10f, 8f, 6f, 3f }[ct];
+            var cHeadPadV = new[] { 7f, 6f, 5f, 5f, 3f }[ct];
+            var cTotalPadT = new[] { 8f, 6f, 6f, 4f, 3f }[ct];
+            var cPayPadT = new[] { 14f, 10f, 8f, 6f, 3f }[ct];
+            var cPayPad = new[] { 14f, 11f, 8f, 6f, 5f }[ct];
+            var cPayLinePadT = new[] { 5f, 5f, 4f, 3f, 2f }[ct];
+            var cQr = new[] { 96f, 76f, 64f, 64f, 64f }[ct];
+            var cSignPadT = new[] { 26f, 16f, 10f, 8f, 6f }[ct];
+            var cSignLineH = new[] { 44f, 36f, 28f, 22f, 18f }[ct];
+            var cSignCapPadT = new[] { 5f, 5f, 5f, 3f, 2f }[ct];
+            var cThanksPadT = new[] { 22f, 14f, 8f, 5f, 3f }[ct];
+            var cThanksPadT2 = new[] { 12f, 8f, 6f, 4f, 3f }[ct];
+            var cThanksGroupPadT = new[] { 3f, 3f, 3f, 2f, 1f }[ct];
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
                 page.MarginHorizontal(42);
-                page.MarginTop(30);
-                page.MarginBottom(28);
+                page.MarginTop(cMarginTop);
+                page.MarginBottom(cMarginBottom);
                 page.DefaultTextStyle(TextStyle.Default.FontFamily("Noto Sans Myanmar"));
                 page.Content().Column(col =>
                 {
                     // --- letterhead: top rule + brand row (template layout) ---
                     col.Item().LineHorizontal(3).LineColor("#14202e");
-                    col.Item().PaddingTop(12).Row(r =>
+                    col.Item().PaddingTop(cHeadPadT).Row(r =>
                     {
                         r.RelativeItem().Column(h =>
                         {
                             var logo = LogoBytes();
                             if (logo is not null)
-                                h.Item().Height(54).Image(logo).FitArea();
+                                h.Item().Height(cLogoH).Image(logo).FitArea();
                             else
                                 h.Item().Text(meta.Shop).Style(ShopTitle(33, "#0b5394"));
-                            h.Item().PaddingTop(4).Text(meta.Group)
+                            h.Item().PaddingTop(cGroupPadT).Text(meta.Group)
                                 .Style(Latin(9, 700, "#D4AF37").LetterSpacing(0.18f));
                         });
                         r.ConstantItem(135).Column(h =>
@@ -182,16 +212,16 @@ public static class PdfService
                             });
                         });
                     });
-                    col.Item().PaddingTop(10).Text(meta.Services)
-                        .Style(Myanmar(10.1f, 700, "#14202e")).LineHeight(1.9f);
-                    col.Item().PaddingTop(8).BorderTop(1).BorderColor("#dfe5ec").Row(r =>
+                    col.Item().PaddingTop(cServPadT).Text(meta.Services)
+                        .Style(Myanmar(10.1f, 700, "#14202e")).LineHeight(cServLH);
+                    col.Item().PaddingTop(cAddrPadT).BorderTop(1).BorderColor("#dfe5ec").Row(r =>
                     {
-                        r.RelativeItem().PaddingTop(8).Text(t =>
+                        r.RelativeItem().PaddingTop(cAddrPadT).Text(t =>
                         {
                             t.Span("Address: ").Style(Myanmar(9.75f, 800, "#0b5394"));
                             t.Span(meta.Address).Style(Myanmar(9.75f, 600, "#14202e"));
                         });
-                        r.RelativeItem().PaddingTop(8).AlignRight().Text(t =>
+                        r.RelativeItem().PaddingTop(cAddrPadT).AlignRight().Text(t =>
                         {
                             t.Span("Contact: ").Style(Myanmar(9.75f, 800, "#0b5394"));
                             t.Span(meta.PhonesDisplay).Style(Myanmar(9.75f, 600, "#14202e"));
@@ -199,7 +229,7 @@ public static class PdfService
                     });
 
                     // --- customer box ---
-                    col.Item().PaddingTop(14).Border(1).BorderColor("#dfe5ec").Padding(14).Row(r =>
+                    col.Item().PaddingTop(cCustPadT).Border(1).BorderColor("#dfe5ec").Padding(cCustPad).Row(r =>
                     {
                         r.RelativeItem().Column(c =>
                         {
@@ -216,7 +246,7 @@ public static class PdfService
                     });
 
                     // --- items table (navy header) + faint logo watermark behind it ---
-                    col.Item().PaddingTop(14).Layers(layers =>
+                    col.Item().PaddingTop(cTablePadT).Layers(layers =>
                     {
                         var wm = WatermarkBytes();
                         if (wm is not null)
@@ -231,11 +261,11 @@ public static class PdfService
                         });
                         t.Header(h =>
                         {
-                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                            h.Cell().Background("#14202e").PaddingVertical(cHeadPadV).PaddingHorizontal(8)
                                 .Text("No.").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
-                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                            h.Cell().Background("#14202e").PaddingVertical(cHeadPadV).PaddingHorizontal(8)
                                 .Text("DESCRIPTION").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
-                            h.Cell().Background("#14202e").PaddingVertical(7).PaddingHorizontal(8)
+                            h.Cell().Background("#14202e").PaddingVertical(cHeadPadV).PaddingHorizontal(8)
                                 .AlignRight().Text("AMOUNT (MMK)").Style(Latin(9.4f, 700, "#ffffff").LetterSpacing(0.06f));
                         });
                         for (var i = 0; i < row.Items.Count; i++)
@@ -249,22 +279,22 @@ public static class PdfService
                             t.Cell().BorderBottom(1).BorderColor("#dfe5ec").PaddingVertical(cellPadV).PaddingHorizontal(8)
                                 .AlignRight().Text(Paper.Fmt(it.Amount)).Style(Myanmar(itemSize, 700, "#000000"));
                         }
-                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
                             .Text("");
-                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
                             .Text("Total (MMK)").Style(Myanmar(12.4f, 800, "#14202e"));
-                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(8).PaddingHorizontal(8)
+                        t.Cell().BorderTop(2).BorderColor("#14202e").PaddingTop(cTotalPadT).PaddingHorizontal(8)
                             .AlignRight().Text(Paper.Fmt(row.Total)).Style(Myanmar(12.4f, 800, "#0b5394"));
                         });
                     });
 
                     // --- payment box + QR ---
-                    col.Item().PaddingTop(14).Border(1).BorderColor("#dfe5ec").Padding(14).Row(r =>
+                    col.Item().PaddingTop(cPayPadT).Border(1).BorderColor("#dfe5ec").Padding(cPayPad).Row(r =>
                     {
                         r.RelativeItem().Column(c =>
                         {
                             c.Item().Text("PAYMENT").Style(Latin(8.6f, 700, "#5b6a7a").LetterSpacing(0.1f));
-                            c.Item().PaddingTop(5).Text(t =>
+                            c.Item().PaddingTop(cPayLinePadT).Text(t =>
                             {
                                 t.Span("KBZ Pay").Style(Myanmar(11.25f, 800, "#0b5394"));
                                 t.Span(" — No. ").Style(Myanmar(11.25f, 400, "#14202e"));
@@ -276,34 +306,34 @@ public static class PdfService
                                 .Style(Myanmar(10.5f, 400, "#5b6a7a"));
                         });
                         if (qr is not null)
-                            r.ConstantItem(96).Border(1).BorderColor("#dfe5ec").Padding(4)
+                            r.ConstantItem(cQr).Border(1).BorderColor("#dfe5ec").Padding(4)
                                 .Image(qr).FitArea();
                     });
 
                     // --- signatures ---
-                    col.Item().PaddingTop(26).Row(r =>
+                    col.Item().PaddingTop(cSignPadT).Row(r =>
                     {
                         r.RelativeItem().Column(c =>
                         {
-                            c.Item().Height(44).BorderBottom(1).BorderColor("#14202e");
-                            c.Item().PaddingTop(5).AlignCenter().Text("Customer Signature")
+                            c.Item().Height(cSignLineH).BorderBottom(1).BorderColor("#14202e");
+                            c.Item().PaddingTop(cSignCapPadT).AlignCenter().Text("Customer Signature")
                                 .Style(Myanmar(9.75f, 400, "#5b6a7a"));
                         });
                         r.ConstantItem(40);
                         r.RelativeItem().Column(c =>
                         {
-                            c.Item().Height(44).BorderBottom(1).BorderColor("#14202e");
-                            c.Item().PaddingTop(5).AlignCenter().Text("Authorized Signature")
+                            c.Item().Height(cSignLineH).BorderBottom(1).BorderColor("#14202e");
+                            c.Item().PaddingTop(cSignCapPadT).AlignCenter().Text("Authorized Signature")
                                 .Style(Myanmar(9.75f, 400, "#5b6a7a"));
                         });
                     });
 
                     // --- thanks (each line centred: AlignCenter belongs on the
                     // text item itself — on the full-width column it does nothing) ---
-                    col.Item().PaddingTop(22).BorderTop(1).BorderColor("#dfe5ec").Column(c =>
+                    col.Item().PaddingTop(cThanksPadT).BorderTop(1).BorderColor("#dfe5ec").Column(c =>
                     {
-                        c.Item().PaddingTop(12).AlignCenter().Text(meta.Thanks).Style(Latin(11.25f, 700, "#0b5394").LetterSpacing(0.02f));
-                        c.Item().PaddingTop(3).AlignCenter().Text(Paper.TitleCase(meta.Group)).Style(Latin(10.5f, 600, "#5b6a7a"));
+                        c.Item().PaddingTop(cThanksPadT2).AlignCenter().Text(meta.Thanks).Style(Latin(11.25f, 700, "#0b5394").LetterSpacing(0.02f));
+                        c.Item().PaddingTop(cThanksGroupPadT).AlignCenter().Text(Paper.TitleCase(meta.Group)).Style(Latin(10.5f, 600, "#5b6a7a"));
                     });
                 });
             });
