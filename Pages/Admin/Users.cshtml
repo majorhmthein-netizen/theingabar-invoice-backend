@@ -70,6 +70,7 @@
             <input type="hidden" name="UserId" value="@u.Id" />
             <button class="mini-btn menu-btn" type="submit">Reset PIN to 1111</button>
           </form>
+          <a class="mini-btn menu-btn" href="/admin/notify?userId=@u.Id">Send notification</a>
           <form method="post" asp-page-handler="Delete" class="inline-form">
             <input type="hidden" name="UserId" value="@u.Id" />
             <button class="mini-btn menu-btn danger" type="submit">Delete</button>

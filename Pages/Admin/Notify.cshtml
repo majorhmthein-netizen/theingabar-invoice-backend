@@ -1,0 +1,17 @@
+@page
+@model AdminNotifyModel
+@{
+    ViewData["Title"] = "Send notification";
+}
+<div class="panel panel-fill">
+  <h2>Send notification</h2>
+  @if (Model.Target is not null)
+  {
+    <p class="hint">To: <b>@Model.Target.Username</b> — @Model.Target.Phone</p>
+    <form method="post">
+      <input type="hidden" name="UserId" value="@Model.Target.Id" />
+      <label class="fld"><span>Message</span><textarea name="Message" rows="4" required></textarea></label>
+      <button class="btn" type="submit">Send notification</button>
+    </form>
+  }
+</div>
