@@ -138,6 +138,18 @@ public static class Paper
     /// the PDF (PdfService) so both shrink identically.</summary>
     public static int ItemTier(int count) => count >= 16 ? 2 : count >= 11 ? 1 : 0;
 
+    /// <summary>One-page fit tier (Han 2026-11-21 "1 ရွက်ထဲ"): the fixed
+    /// blocks (logo, payment box + QR, signatures, thanks, paddings) shrink
+    /// as the item count grows, so the whole invoice still fits on one A4
+    /// page. 0 = full size (≤4 items); 1 = 5–7; 2 = 8–10; 3 = 11–15;
+    /// 4 = 16–20. Separate from ItemTier (description font) so few-item
+    /// invoices keep the full-size layout.</summary>
+    public static int CompactTier(int count) =>
+        count >= 16 ? 4 : count >= 11 ? 3 : count >= 8 ? 2 : count >= 5 ? 1 : 0;
+
+    public static string CompactClass(int count) =>
+        CompactTier(count) switch { 1 => " inv-c1", 2 => " inv-c2", 3 => " inv-c3", 4 => " inv-c4", _ => "" };
+
     /// <summary>Validates a parsed invoice (same rules as the /api server
     /// validation). Returns an error string or null.</summary>
     public static string? ValidateDraft(string? date, string? customer, List<InvoiceItem> items)
