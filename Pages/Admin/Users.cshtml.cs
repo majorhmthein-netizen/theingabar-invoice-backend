@@ -90,10 +90,31 @@ public class AdminUsersModel : AppPageModel
         if (userId is null) { Flash("That reset request is already done."); return RedirectToPage("/Admin/Users"); }
         var user = await AppDb.FindUserByIdAsync(userId.Value);
         if (user is null) { Flash("That user no longer exists."); return RedirectToPage("/Admin/Users"); }
+        await ResetPinToDefaultAsync(user);
+        Flash("PIN reset to 1111 for " + user.Username + ".");
+        return RedirectToPage("/Admin/Users");
+    }
+
+    /// <summary>Reset a mechanic's PIN to 1111 straight from their row
+    /// (Han 2026-11-21: the admin panel showed no reset button until a
+    /// Forgot PIN request existed — now the admin can reset any PIN
+    /// directly, no request needed). Same effect as ResetPin: PIN to
+    /// 1111, login lockout cleared, sessions revoked.</summary>
+    public async Task<IActionResult> OnPostResetPinDirectAsync()
+    {
+        var g = await GateAsync(); if (g is not null) return g;
+        var user = await AppDb.FindUserByIdAsync(UserId);
+        if (user is null) { Flash("That user no longer exists."); return RedirectToPage("/Admin/Users"); }
+        if (user.IsAdmin) { Flash("Admin accounts sign in with Google, not a PIN."); return RedirectToPage("/Admin/Users"); }
+        await ResetPinToDefaultAsync(user);
+        Flash("PIN reset to 1111 for " + user.Username + ".");
+        return RedirectToPage("/Admin/Users");
+    }
+
+    static async Task ResetPinToDefaultAsync(UserRow user)
+    {
         await AppDb.SetUserPinHashAsync(user.Id, Auth.HashPin(Auth.DefaultPin));
         await AppDb.ResetRateLimitsByPrefixAsync("pin-attempt:" + user.Phone);
         await AppDb.RevokeUserSessionsAsync(user.Id);
-        Flash("PIN reset to 1111 for " + user.Username + ".");
-        return RedirectToPage("/Admin/Users");
     }
 }
